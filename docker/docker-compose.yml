@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: berexqms-postgres
+    environment:
+      POSTGRES_DB: berexqms
+      POSTGRES_USER: berexqms_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-BerexQms_Dev_2026!}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U berexqms_app -d berexqms"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: berexqms-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-BerexQms_Redis_2026!} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-BerexQms_Redis_2026!}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: berexqms-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-berexqms_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-BerexQms_Minio_2026!}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  seq:
+    image: datalust/seq:latest
+    container_name: berexqms-seq
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "5341:5341"
+      - "8081:80"
+    volumes:
+      - seq_data:/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: berexqms-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=berexqms;Username=berexqms_app;Password=${POSTGRES_PASSWORD:-BerexQms_Dev_2026!}"
+      ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD:-BerexQms_Redis_2026!}"
+      FileStorage__Endpoint: "minio:9000"
+      FileStorage__AccessKey: ${MINIO_ROOT_USER:-berexqms_minio}
+      FileStorage__SecretKey: ${MINIO_ROOT_PASSWORD:-BerexQms_Minio_2026!}
+      FileStorage__UseSSL: "false"
+      Serilog__WriteTo__1__Args__serverUrl: "http://seq:5341"
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    container_name: berexqms-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  seq_data:

@@ -1,0 +1,6 @@
+@BerexQms.Api_HostAddress = http://localhost:5201
+
+GET {{BerexQms.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

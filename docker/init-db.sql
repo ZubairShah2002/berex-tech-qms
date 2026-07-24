@@ -78,3 +78,177 @@ EXCEPTION
         RETURN NULL;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- =============================================================================
+-- Identity Module Tables
+-- =============================================================================
+
+-- Tenants
+CREATE TABLE IF NOT EXISTS identity.tenants (
+    id              UUID PRIMARY KEY,
+    tenant_id       UUID NOT NULL,
+    name            VARCHAR(200) NOT NULL,
+    code            VARCHAR(20) NOT NULL,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    contact_email   VARCHAR(254),
+    timezone        VARCHAR(50) DEFAULT 'UTC',
+    created_by      VARCHAR(100) NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by     VARCHAR(100),
+    modified_at     TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_tenants_code
+    ON identity.tenants (code);
+
+-- Users
+CREATE TABLE IF NOT EXISTS identity.users (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    email                   VARCHAR(254) NOT NULL,
+    first_name              VARCHAR(100) NOT NULL,
+    last_name               VARCHAR(100) NOT NULL,
+    display_name            VARCHAR(201) NOT NULL,
+    password_hash           VARCHAR(256) NOT NULL,
+    status                  VARCHAR(20) NOT NULL DEFAULT 'Active',
+    phone_number            VARCHAR(20),
+    department              VARCHAR(100),
+    job_title               VARCHAR(100),
+    last_login_at           TIMESTAMPTZ,
+    failed_login_attempts   INT NOT NULL DEFAULT 0,
+    lockout_end_utc         TIMESTAMPTZ,
+    refresh_token           VARCHAR(256),
+    refresh_token_expiry_utc TIMESTAMPTZ,
+    created_by              VARCHAR(100) NOT NULL,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by             VARCHAR(100),
+    modified_at             TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email
+    ON identity.users (email);
+
+CREATE INDEX IF NOT EXISTS ix_users_tenant_id
+    ON identity.users (tenant_id);
+
+CREATE INDEX IF NOT EXISTS ix_users_refresh_token
+    ON identity.users (refresh_token) WHERE refresh_token IS NOT NULL;
+
+-- Roles
+CREATE TABLE IF NOT EXISTS identity.roles (
+    id              UUID PRIMARY KEY,
+    tenant_id       UUID NOT NULL,
+    name            VARCHAR(100) NOT NULL,
+    description     VARCHAR(500),
+    is_system_role  BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by      VARCHAR(100) NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by     VARCHAR(100),
+    modified_at     TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_roles_tenant_name
+    ON identity.roles (tenant_id, name);
+
+-- Permissions
+CREATE TABLE IF NOT EXISTS identity.permissions (
+    id              UUID PRIMARY KEY,
+    tenant_id       UUID NOT NULL,
+    module          VARCHAR(100) NOT NULL,
+    action          VARCHAR(100) NOT NULL,
+    description     VARCHAR(500)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_permissions_tenant_module_action
+    ON identity.permissions (tenant_id, module, action);
+
+-- User-Role junction
+CREATE TABLE IF NOT EXISTS identity.user_roles (
+    user_id         UUID NOT NULL REFERENCES identity.users(id) ON DELETE CASCADE,
+    role_id         UUID NOT NULL REFERENCES identity.roles(id) ON DELETE RESTRICT,
+    assigned_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    assigned_by     VARCHAR(100) NOT NULL,
+    PRIMARY KEY (user_id, role_id)
+);
+
+-- Role-Permission junction
+CREATE TABLE IF NOT EXISTS identity.role_permissions (
+    role_id         UUID NOT NULL REFERENCES identity.roles(id) ON DELETE CASCADE,
+    permission_id   UUID NOT NULL REFERENCES identity.permissions(id) ON DELETE RESTRICT,
+    PRIMARY KEY (role_id, permission_id)
+);
+
+-- RLS policies on identity tables
+ALTER TABLE identity.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE identity.roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE identity.permissions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_users ON identity.users
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_roles ON identity.roles
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_permissions ON identity.permissions
+    USING (tenant_id = shared.current_tenant_id());
+
+-- =============================================================================
+-- Seed Data: Default tenant, roles, and system admin
+-- =============================================================================
+
+-- Default tenant
+INSERT INTO identity.tenants (id, tenant_id, name, code, is_active, contact_email, timezone, created_by, created_at)
+VALUES (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'Berex Tech Manufacturing',
+    'BEREX',
+    TRUE,
+    'admin@berextech.com',
+    'UTC',
+    'system',
+    NOW()
+) ON CONFLICT (code) DO NOTHING;
+
+-- Default system roles
+INSERT INTO identity.roles (id, tenant_id, name, description, is_system_role, created_by, created_at) VALUES
+    ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'System Administrator', 'Platform-wide administration: tenant management, system configuration, user management', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Quality Manager', 'Tenant-wide quality operations, approval authority, AI capability management, report access', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Quality Supervisor', 'Department/area: inspection approval, NC disposition, team workload management', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Quality Engineer', 'Tenant-wide quality data: RCA/CAPA ownership, SPC management, AI interaction', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Quality Inspector', 'Assigned inspection types: inspection execution, defect reporting, measurement recording', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'SQE', 'Supplier quality scope: supplier management, SCAR management, scorecard review', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', 'Internal Auditor', 'Audit scope: audit execution, finding recording, report generation', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001', 'Calibration Technician', 'Calibration scope: equipment management, calibration recording, certificate upload', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001', 'Training Manager', 'Training scope: course management, assignment, qualification management', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', 'Operator', 'Limited: defect reporting only, no approval authority', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', 'Supplier Portal User', 'Own supplier data only: view own scorecards, respond to own SCARs, upload certificates', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', 'Read-Only Viewer', 'Configurable scope: dashboard and report viewing only, no data modification', TRUE, 'system', NOW())
+ON CONFLICT DO NOTHING;
+
+-- Default system admin user (password: Admin@123456)
+-- BCrypt hash for "Admin@123456" with work factor 12
+INSERT INTO identity.users (id, tenant_id, email, first_name, last_name, display_name, password_hash, status, department, job_title, created_by, created_at)
+VALUES (
+    '20000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    'admin@berextech.com',
+    'System',
+    'Administrator',
+    'System Administrator',
+    '$2a$12$LJ3m4ys3Gzl7v2VBKwmdxOYBNGTmN9pkLFNcHXNO5z7r5W5qR5d2W',
+    'Active',
+    'IT',
+    'System Administrator',
+    'system',
+    NOW()
+) ON CONFLICT DO NOTHING;
+
+-- Assign System Administrator role to default admin user
+INSERT INTO identity.user_roles (user_id, role_id, assigned_at, assigned_by)
+VALUES (
+    '20000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000001',
+    NOW(),
+    'system'
+) ON CONFLICT DO NOTHING;

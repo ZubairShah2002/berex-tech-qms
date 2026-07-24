@@ -1,6 +1,10 @@
+using BerexQms.Application.Identity.Interfaces;
 using BerexQms.Application.Interfaces;
+using BerexQms.Domain.Identity.Repositories;
 using BerexQms.Infrastructure.Caching;
 using BerexQms.Infrastructure.FileStorage;
+using BerexQms.Infrastructure.Identity.Repositories;
+using BerexQms.Infrastructure.Identity.Services;
 using BerexQms.Infrastructure.Persistence;
 using BerexQms.Infrastructure.Persistence.Interceptors;
 using BerexQms.Infrastructure.Services;
@@ -101,5 +105,12 @@ public static class DependencyInjection
         services.AddSingleton<IClockService, ClockService>();
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddScoped<IAuditLogService, AuditLogService>();
+
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
+
+        services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddScoped<ITokenService, JwtTokenService>();
     }
 }

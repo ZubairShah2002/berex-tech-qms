@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   Menu,
   LayoutDashboard,
@@ -15,6 +15,7 @@ import {
   BarChart3,
   Settings,
   ChevronLeft,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { useUiStore } from '@/stores/ui-store'
@@ -43,8 +44,15 @@ const navigation: NavEntry[] = [
 ]
 
 export function AppShell() {
+  const navigate = useNavigate()
   const { sidebarOpen, sidebarCollapsed, toggleSidebar, toggleSidebarCollapsed } = useUiStore()
   const user = useAuthStore((s) => s.user)
+  const clearAuth = useAuthStore((s) => s.clearAuth)
+
+  function handleLogout() {
+    clearAuth()
+    navigate('/login', { replace: true })
+  }
 
   const initials = user
     ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
@@ -109,7 +117,19 @@ export function AppShell() {
           </button>
         </div>
         <div className={styles.headerRight}>
-          {/* Placeholder for notifications, density toggle, user menu */}
+          {user && (
+            <span className={styles.headerUser}>
+              {user.firstName} {user.lastName}
+            </span>
+          )}
+          <button
+            className={styles.logoutButton}
+            onClick={handleLogout}
+            aria-label="Sign out"
+          >
+            <LogOut size={16} />
+            <span>Sign out</span>
+          </button>
         </div>
       </header>
 

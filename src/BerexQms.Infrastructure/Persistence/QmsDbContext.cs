@@ -1,4 +1,5 @@
 using BerexQms.Application.Interfaces;
+using BerexQms.Domain.Identity.Entities;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,11 @@ public class QmsDbContext : DbContext, IUnitOfWork
 
     public DbSet<AuditLogEntry> AuditLogs => Set<AuditLogEntry>();
     public DbSet<DomainEventOutboxEntry> DomainEventsOutbox => Set<DomainEventOutboxEntry>();
+
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

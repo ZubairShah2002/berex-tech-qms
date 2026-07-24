@@ -1,0 +1,85 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{1ABDE383-F745-4554-A155-B2F792AA8D5D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.SharedKernel", "src\BerexQms.SharedKernel\BerexQms.SharedKernel.csproj", "{8194D2D5-8EA9-4BE6-AEE1-6CA7C03CAA04}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.Domain", "src\BerexQms.Domain\BerexQms.Domain.csproj", "{D12EFE97-6102-45D0-950F-1B7D3773B021}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.Application", "src\BerexQms.Application\BerexQms.Application.csproj", "{DC090992-9819-4259-AE41-718C479AA3CB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.Infrastructure", "src\BerexQms.Infrastructure\BerexQms.Infrastructure.csproj", "{0C4DC827-EC7D-4F48-B377-F6BA6952E507}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.Api", "src\BerexQms.Api\BerexQms.Api.csproj", "{02C7E9F9-339E-40DA-B427-D7E2BC4321B8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{B29DE0CA-2269-4B72-8603-1483001736B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.Domain.Tests", "tests\BerexQms.Domain.Tests\BerexQms.Domain.Tests.csproj", "{954FF2C1-0314-44CA-B990-4C21C9C5203C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.Application.Tests", "tests\BerexQms.Application.Tests\BerexQms.Application.Tests.csproj", "{180154C9-F7E5-4EB5-8177-266F28C0BDE6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.Infrastructure.Tests", "tests\BerexQms.Infrastructure.Tests\BerexQms.Infrastructure.Tests.csproj", "{AEC5499D-2267-4D1E-AC39-F8FC9D4801C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BerexQms.Api.Tests", "tests\BerexQms.Api.Tests\BerexQms.Api.Tests.csproj", "{BF56434A-DB6D-4895-B485-92300D88DCFA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8194D2D5-8EA9-4BE6-AEE1-6CA7C03CAA04}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8194D2D5-8EA9-4BE6-AEE1-6CA7C03CAA04}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8194D2D5-8EA9-4BE6-AEE1-6CA7C03CAA04}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8194D2D5-8EA9-4BE6-AEE1-6CA7C03CAA04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D12EFE97-6102-45D0-950F-1B7D3773B021}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D12EFE97-6102-45D0-950F-1B7D3773B021}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D12EFE97-6102-45D0-950F-1B7D3773B021}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D12EFE97-6102-45D0-950F-1B7D3773B021}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC090992-9819-4259-AE41-718C479AA3CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC090992-9819-4259-AE41-718C479AA3CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC090992-9819-4259-AE41-718C479AA3CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC090992-9819-4259-AE41-718C479AA3CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C4DC827-EC7D-4F48-B377-F6BA6952E507}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C4DC827-EC7D-4F48-B377-F6BA6952E507}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C4DC827-EC7D-4F48-B377-F6BA6952E507}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C4DC827-EC7D-4F48-B377-F6BA6952E507}.Release|Any CPU.Build.0 = Release|Any CPU
+		{02C7E9F9-339E-40DA-B427-D7E2BC4321B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{02C7E9F9-339E-40DA-B427-D7E2BC4321B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{02C7E9F9-339E-40DA-B427-D7E2BC4321B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{02C7E9F9-339E-40DA-B427-D7E2BC4321B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{954FF2C1-0314-44CA-B990-4C21C9C5203C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{954FF2C1-0314-44CA-B990-4C21C9C5203C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{954FF2C1-0314-44CA-B990-4C21C9C5203C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{954FF2C1-0314-44CA-B990-4C21C9C5203C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{180154C9-F7E5-4EB5-8177-266F28C0BDE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{180154C9-F7E5-4EB5-8177-266F28C0BDE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{180154C9-F7E5-4EB5-8177-266F28C0BDE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{180154C9-F7E5-4EB5-8177-266F28C0BDE6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AEC5499D-2267-4D1E-AC39-F8FC9D4801C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AEC5499D-2267-4D1E-AC39-F8FC9D4801C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AEC5499D-2267-4D1E-AC39-F8FC9D4801C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AEC5499D-2267-4D1E-AC39-F8FC9D4801C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF56434A-DB6D-4895-B485-92300D88DCFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF56434A-DB6D-4895-B485-92300D88DCFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF56434A-DB6D-4895-B485-92300D88DCFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF56434A-DB6D-4895-B485-92300D88DCFA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8194D2D5-8EA9-4BE6-AEE1-6CA7C03CAA04} = {1ABDE383-F745-4554-A155-B2F792AA8D5D}
+		{D12EFE97-6102-45D0-950F-1B7D3773B021} = {1ABDE383-F745-4554-A155-B2F792AA8D5D}
+		{DC090992-9819-4259-AE41-718C479AA3CB} = {1ABDE383-F745-4554-A155-B2F792AA8D5D}
+		{0C4DC827-EC7D-4F48-B377-F6BA6952E507} = {1ABDE383-F745-4554-A155-B2F792AA8D5D}
+		{02C7E9F9-339E-40DA-B427-D7E2BC4321B8} = {1ABDE383-F745-4554-A155-B2F792AA8D5D}
+		{954FF2C1-0314-44CA-B990-4C21C9C5203C} = {B29DE0CA-2269-4B72-8603-1483001736B1}
+		{180154C9-F7E5-4EB5-8177-266F28C0BDE6} = {B29DE0CA-2269-4B72-8603-1483001736B1}
+		{AEC5499D-2267-4D1E-AC39-F8FC9D4801C4} = {B29DE0CA-2269-4B72-8603-1483001736B1}
+		{BF56434A-DB6D-4895-B485-92300D88DCFA} = {B29DE0CA-2269-4B72-8603-1483001736B1}
+	EndGlobalSection
+EndGlobal

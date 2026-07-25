@@ -81,6 +81,5 @@ public sealed class PartRevisionConfiguration : IEntityTypeConfiguration<PartRev
         builder.HasIndex(r => r.TenantId).HasDatabaseName("ix_part_revisions_tenant_id");
         builder.HasIndex(r => r.Status).HasDatabaseName("ix_part_revisions_status");
 
-        builder.Navigation(r => r.SpecificationParameters).AutoInclude();
     }
 }

@@ -46,7 +46,7 @@ export function ProductsListPage() {
   const [page, setPage] = useState(1)
   const pageSize = 20
 
-  const { data, isLoading } = useQuery<PagedResult>({
+  const { data, isLoading, isError } = useQuery<PagedResult>({
     queryKey: ['parts', search, status, page],
     queryFn: async () => {
       const params = new URLSearchParams()
@@ -143,6 +143,12 @@ export function ProductsListPage() {
           className={styles.statusFilter}
         />
       </div>
+
+      {isError && (
+        <div style={{ padding: 'var(--spacing-3) var(--spacing-4)', background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid var(--color-error-border)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)' }}>
+          Failed to load parts. Please try again.
+        </div>
+      )}
 
       <DataTable
         columns={columns}

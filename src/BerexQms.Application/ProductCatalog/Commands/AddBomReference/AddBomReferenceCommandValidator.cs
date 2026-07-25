@@ -10,7 +10,8 @@ public sealed class AddBomReferenceCommandValidator : AbstractValidator<AddBomRe
             .NotEmpty().WithMessage("Part ID is required.");
 
         RuleFor(x => x.ChildPartId)
-            .NotEmpty().WithMessage("Child part ID is required.");
+            .NotEmpty().WithMessage("Child part ID is required.")
+            .NotEqual(x => x.PartId).WithMessage("A part cannot reference itself in a BOM.");
 
         RuleFor(x => x.Quantity)
             .GreaterThan(0).WithMessage("Quantity must be greater than zero.");

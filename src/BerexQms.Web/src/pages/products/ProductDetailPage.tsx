@@ -71,6 +71,7 @@ export function ProductDetailPage() {
   const [showRevisionForm, setShowRevisionForm] = useState(false)
   const [revisionForm, setRevisionForm] = useState({ revisionCode: '', description: '', changeReason: '' })
   const [formError, setFormError] = useState('')
+  const [actionError, setActionError] = useState('')
 
   const { data: part, isLoading } = useQuery<PartDetail>({
     queryKey: ['part', id],
@@ -84,8 +85,13 @@ export function ProductDetailPage() {
   const obsoleteMutation = useMutation({
     mutationFn: () => apiClient.post(`/parts/${id}/obsolete`),
     onSuccess: () => {
+      setActionError('')
       queryClient.invalidateQueries({ queryKey: ['part', id] })
       queryClient.invalidateQueries({ queryKey: ['parts'] })
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { detail?: string; error?: string } } }
+      setActionError(axiosErr.response?.data?.detail ?? axiosErr.response?.data?.error ?? 'Failed to obsolete part.')
     },
   })
 
@@ -114,8 +120,13 @@ export function ProductDetailPage() {
     mutationFn: (revisionId: string) =>
       apiClient.post(`/parts/${id}/revisions/${revisionId}/release`),
     onSuccess: () => {
+      setActionError('')
       queryClient.invalidateQueries({ queryKey: ['part', id] })
       queryClient.invalidateQueries({ queryKey: ['parts'] })
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { detail?: string; error?: string } } }
+      setActionError(axiosErr.response?.data?.detail ?? axiosErr.response?.data?.error ?? 'Failed to release revision.')
     },
   })
 
@@ -131,6 +142,12 @@ export function ProductDetailPage() {
         <ArrowLeft size={16} />
         Back to Product Catalog
       </button>
+
+      {actionError && (
+        <div style={{ padding: 'var(--spacing-3) var(--spacing-4)', background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid var(--color-error-border)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-sm)' }}>
+          {actionError}
+        </div>
+      )}
 
       <div className={styles.header}>
         <div className={styles.headerInfo}>

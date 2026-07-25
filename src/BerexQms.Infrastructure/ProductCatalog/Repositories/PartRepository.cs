@@ -37,4 +37,21 @@ public sealed class PartRepository : RepositoryBase<Part>, IPartRepository
             .Include(p => p.BomReferences)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
+
+    public async Task<Part?> GetFullDetailAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await DbSet
+            .Include(p => p.Revisions)
+                .ThenInclude(r => r.SpecificationParameters)
+            .Include(p => p.BomReferences)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Part>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        var idList = ids.ToList();
+        return await DbSet
+            .Where(p => idList.Contains(p.Id))
+            .ToListAsync(cancellationToken);
+    }
 }

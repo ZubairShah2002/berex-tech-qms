@@ -42,6 +42,11 @@ public sealed class BomReferenceConfiguration : IEntityTypeConfiguration<BomRefe
             .HasColumnName("sort_order")
             .IsRequired();
 
+        builder.HasOne<Part>()
+            .WithMany()
+            .HasForeignKey(b => b.ChildPartId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasIndex(b => b.TenantId).HasDatabaseName("ix_bom_refs_tenant_id");
         builder.HasIndex(b => new { b.ParentPartId, b.ChildPartId }).IsUnique()
             .HasDatabaseName("ix_bom_refs_parent_child");

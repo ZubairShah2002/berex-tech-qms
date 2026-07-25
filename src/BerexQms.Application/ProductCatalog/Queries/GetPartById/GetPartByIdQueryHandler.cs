@@ -16,11 +16,9 @@ public sealed class GetPartByIdQueryHandler : IQueryHandler<GetPartByIdQuery, Pa
 
     public async Task<Result<PartDetailDto>> Handle(GetPartByIdQuery request, CancellationToken cancellationToken)
     {
-        var part = await _partRepository.GetWithRevisionsAsync(request.PartId, cancellationToken);
+        var part = await _partRepository.GetFullDetailAsync(request.PartId, cancellationToken);
         if (part is null)
             return PartErrors.NotFound;
-
-        var partWithBom = await _partRepository.GetWithBomReferencesAsync(request.PartId, cancellationToken);
 
         var revisionDtos = part.Revisions
             .OrderByDescending(r => r.CreatedAt)
@@ -44,11 +42,15 @@ public sealed class GetPartByIdQueryHandler : IQueryHandler<GetPartByIdQuery, Pa
             .ToList();
 
         var bomDtos = new List<BomReferenceDto>();
-        if (partWithBom is not null)
+        if (part.BomReferences.Count > 0)
         {
-            foreach (var bom in partWithBom.BomReferences.OrderBy(b => b.SortOrder))
+            var childPartIds = part.BomReferences.Select(b => b.ChildPartId).Distinct();
+            var childParts = await _partRepository.GetByIdsAsync(childPartIds, cancellationToken);
+            var childPartLookup = childParts.ToDictionary(p => p.Id);
+
+            foreach (var bom in part.BomReferences.OrderBy(b => b.SortOrder))
             {
-                var childPart = await _partRepository.GetByIdAsync(bom.ChildPartId, cancellationToken);
+                childPartLookup.TryGetValue(bom.ChildPartId, out var childPart);
                 bomDtos.Add(new BomReferenceDto(
                     bom.Id,
                     bom.ChildPartId,

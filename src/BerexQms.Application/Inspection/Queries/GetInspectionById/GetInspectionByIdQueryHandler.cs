@@ -87,6 +87,8 @@ public sealed class GetInspectionByIdQueryHandler
             record.CompletedBy,
             record.ApprovedAt,
             record.ApprovedBy,
+            record.RejectedAt,
+            record.RejectedBy,
             disposition,
             checklist,
             gateResults,

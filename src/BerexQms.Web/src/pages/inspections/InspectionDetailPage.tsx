@@ -76,6 +76,8 @@ interface InspectionDetail {
   completedBy: string | null
   approvedAt: string | null
   approvedBy: string | null
+  rejectedAt: string | null
+  rejectedBy: string | null
   disposition: DispositionDto | null
   checklist: ChecklistDto | null
   gateResults: GateResultDto[]
@@ -403,6 +405,14 @@ export function InspectionDetailPage() {
             <span className={styles.metaLabel}>Approved</span>
             <span className={styles.metaValue}>
               {new Date(inspection.approvedAt).toLocaleDateString()}
+            </span>
+          </div>
+        )}
+        {inspection.rejectedAt && (
+          <div className={styles.metaItem}>
+            <span className={styles.metaLabel}>Rejected</span>
+            <span className={styles.metaValue}>
+              {new Date(inspection.rejectedAt).toLocaleDateString()}
             </span>
           </div>
         )}

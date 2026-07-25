@@ -338,6 +338,8 @@ CREATE TABLE IF NOT EXISTS inspection.inspection_records (
     completed_by                VARCHAR(100),
     approved_at                 TIMESTAMPTZ,
     approved_by                 VARCHAR(100),
+    rejected_at                 TIMESTAMPTZ,
+    rejected_by                 VARCHAR(100),
     checklist_id                UUID,
     disposition_type            VARCHAR(30),
     disposition_justification   VARCHAR(2000),
@@ -367,6 +369,7 @@ CREATE INDEX IF NOT EXISTS ix_inspection_records_type
 -- Inspection Gate Results (owned by InspectionRecord)
 CREATE TABLE IF NOT EXISTS inspection.inspection_gate_results (
     id                      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
     inspection_record_id    UUID NOT NULL REFERENCES inspection.inspection_records(id) ON DELETE CASCADE,
     gate_type               VARCHAR(30) NOT NULL,
     passed                  BOOLEAN NOT NULL,
@@ -381,7 +384,7 @@ CREATE INDEX IF NOT EXISTS ix_gate_results_inspection_id
 CREATE TABLE IF NOT EXISTS inspection.inspection_checklists (
     id                  UUID PRIMARY KEY,
     tenant_id           UUID NOT NULL,
-    inspection_id       UUID NOT NULL,
+    inspection_id       UUID NOT NULL REFERENCES inspection.inspection_records(id) ON DELETE CASCADE,
     part_revision_id    UUID NOT NULL,
     revision_code       VARCHAR(20) NOT NULL,
     snapshot_at         TIMESTAMPTZ NOT NULL
@@ -458,12 +461,16 @@ CREATE INDEX IF NOT EXISTS ix_sampling_plans_part_type_active
 
 -- RLS policies on inspection tables
 ALTER TABLE inspection.inspection_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inspection.inspection_gate_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inspection.inspection_checklists ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inspection.checklist_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inspection.measurements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inspection.sampling_plans ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_inspection_records ON inspection.inspection_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_inspection_gate_results ON inspection.inspection_gate_results
     USING (tenant_id = shared.current_tenant_id());
 
 CREATE POLICY tenant_isolation_inspection_checklists ON inspection.inspection_checklists

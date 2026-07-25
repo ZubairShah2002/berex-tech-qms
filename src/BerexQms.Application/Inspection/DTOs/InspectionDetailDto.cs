@@ -19,6 +19,8 @@ public sealed record InspectionDetailDto(
     string? CompletedBy,
     DateTime? ApprovedAt,
     string? ApprovedBy,
+    DateTime? RejectedAt,
+    string? RejectedBy,
     DispositionDto? Disposition,
     ChecklistDto? Checklist,
     IReadOnlyList<GateResultDto> GateResults,

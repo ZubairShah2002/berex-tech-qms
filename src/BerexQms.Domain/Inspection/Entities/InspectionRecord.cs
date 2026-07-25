@@ -29,6 +29,8 @@ public sealed class InspectionRecord : AggregateRoot<Guid>, IAuditableEntity
     public string? CompletedBy { get; private set; }
     public DateTime? ApprovedAt { get; private set; }
     public string? ApprovedBy { get; private set; }
+    public DateTime? RejectedAt { get; private set; }
+    public string? RejectedBy { get; private set; }
     public LotDisposition? Disposition { get; private set; }
 
     public Guid? ChecklistId { get; private set; }
@@ -179,9 +181,12 @@ public sealed class InspectionRecord : AggregateRoot<Guid>, IAuditableEntity
         if (Status != InspectionStatus.PendingApproval)
             throw new DomainException($"Cannot reject inspection in status: {Status}.");
 
+        if (string.IsNullOrWhiteSpace(rejectedBy))
+            throw new DomainException("Rejected by is required.");
+
         Status = InspectionStatus.Rejected;
-        ApprovedAt = DateTime.UtcNow;
-        ApprovedBy = rejectedBy;
+        RejectedAt = DateTime.UtcNow;
+        RejectedBy = rejectedBy;
         if (notes != null) Notes = notes.Trim();
     }
 

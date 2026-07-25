@@ -2,6 +2,7 @@ using Asp.Versioning;
 using BerexQms.Application.Inspection.Commands.CreateSamplingPlan;
 using BerexQms.Application.Inspection.Commands.ToggleSamplingPlan;
 using BerexQms.Application.Inspection.Commands.UpdateSamplingPlan;
+using BerexQms.Application.Inspection.Queries.GetSamplingPlanById;
 using BerexQms.Application.Inspection.Queries.ListSamplingPlans;
 using BerexQms.SharedKernel.Results;
 using MediatR;
@@ -39,6 +40,17 @@ public sealed class SamplingPlansController : ControllerBase
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
     }
 
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetSamplingPlanByIdQuery(id), cancellationToken);
+        return result.IsSuccess
+            ? Ok(result.Value)
+            : result.Error.Type == ErrorType.NotFound
+                ? NotFound(new { error = result.Error.Message })
+                : BadRequest(new { error = result.Error.Message });
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateSamplingPlanRequest request, CancellationToken cancellationToken)
@@ -51,7 +63,7 @@ public sealed class SamplingPlansController : ControllerBase
             cancellationToken);
 
         return result.IsSuccess
-            ? CreatedAtAction(null, new { id = result.Value.Id }, result.Value)
+            ? CreatedAtAction(nameof(GetById), new { id = result.Value.Id }, result.Value)
             : BadRequest(new { error = result.Error.Message });
     }
 

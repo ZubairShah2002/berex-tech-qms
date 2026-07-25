@@ -92,6 +92,13 @@ public sealed class InspectionRecordConfiguration : IEntityTypeConfiguration<Ins
             .HasColumnName("approved_by")
             .HasMaxLength(100);
 
+        builder.Property(r => r.RejectedAt)
+            .HasColumnName("rejected_at");
+
+        builder.Property(r => r.RejectedBy)
+            .HasColumnName("rejected_by")
+            .HasMaxLength(100);
+
         builder.Property(r => r.ChecklistId)
             .HasColumnName("checklist_id");
 

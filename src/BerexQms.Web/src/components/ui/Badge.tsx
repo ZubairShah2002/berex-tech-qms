@@ -37,6 +37,15 @@ const statusMap: Record<string, BadgeVariant> = {
   closed: 'neutral',
   overdue: 'error',
   completed: 'success',
+  inprogress: 'info',
+  'in-progress': 'info',
+  pendingapproval: 'warning',
+  'pending-approval': 'warning',
+  cancelled: 'neutral',
+  pass: 'success',
+  fail: 'error',
+  conditionalpass: 'warning',
+  'conditional-pass': 'warning',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

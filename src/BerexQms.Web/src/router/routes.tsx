@@ -8,6 +8,9 @@ import { ModulePlaceholder } from '@/pages/ModulePlaceholder'
 import { ProductsListPage } from '@/pages/products/ProductsListPage'
 import { ProductDetailPage } from '@/pages/products/ProductDetailPage'
 import { ProductFormPage } from '@/pages/products/ProductFormPage'
+import { InspectionsListPage } from '@/pages/inspections/InspectionsListPage'
+import { InspectionDetailPage } from '@/pages/inspections/InspectionDetailPage'
+import { InspectionCreatePage } from '@/pages/inspections/InspectionCreatePage'
 
 export const router = createBrowserRouter([
   {
@@ -23,7 +26,9 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'documents', element: <ModulePlaceholder moduleName="Document Control" /> },
-          { path: 'inspections', element: <ModulePlaceholder moduleName="Inspections" /> },
+          { path: 'inspections', element: <InspectionsListPage /> },
+          { path: 'inspections/new', element: <InspectionCreatePage /> },
+          { path: 'inspections/:id', element: <InspectionDetailPage /> },
           { path: 'nonconformances', element: <ModulePlaceholder moduleName="Non-Conformances" /> },
           { path: 'capa', element: <ModulePlaceholder moduleName="CAPA" /> },
           { path: 'audits', element: <ModulePlaceholder moduleName="Audit Management" /> },

@@ -1,11 +1,13 @@
 using BerexQms.Application.Identity.Interfaces;
 using BerexQms.Application.Interfaces;
 using BerexQms.Domain.Identity.Repositories;
+using BerexQms.Domain.Inspection.Repositories;
 using BerexQms.Domain.ProductCatalog.Repositories;
 using BerexQms.Infrastructure.Caching;
 using BerexQms.Infrastructure.FileStorage;
 using BerexQms.Infrastructure.Identity.Repositories;
 using BerexQms.Infrastructure.Identity.Services;
+using BerexQms.Infrastructure.Inspection.Repositories;
 using BerexQms.Infrastructure.Persistence;
 using BerexQms.Infrastructure.Persistence.Interceptors;
 using BerexQms.Infrastructure.ProductCatalog.Repositories;
@@ -116,5 +118,8 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, JwtTokenService>();
 
         services.AddScoped<IPartRepository, PartRepository>();
+
+        services.AddScoped<IInspectionRepository, InspectionRepository>();
+        services.AddScoped<ISamplingPlanRepository, SamplingPlanRepository>();
     }
 }

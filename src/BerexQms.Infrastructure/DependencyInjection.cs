@@ -1,12 +1,14 @@
 using BerexQms.Application.Identity.Interfaces;
 using BerexQms.Application.Interfaces;
 using BerexQms.Domain.Identity.Repositories;
+using BerexQms.Domain.ProductCatalog.Repositories;
 using BerexQms.Infrastructure.Caching;
 using BerexQms.Infrastructure.FileStorage;
 using BerexQms.Infrastructure.Identity.Repositories;
 using BerexQms.Infrastructure.Identity.Services;
 using BerexQms.Infrastructure.Persistence;
 using BerexQms.Infrastructure.Persistence.Interceptors;
+using BerexQms.Infrastructure.ProductCatalog.Repositories;
 using BerexQms.Infrastructure.Services;
 using BerexQms.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -112,5 +114,7 @@ public static class DependencyInjection
 
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<ITokenService, JwtTokenService>();
+
+        services.AddScoped<IPartRepository, PartRepository>();
     }
 }

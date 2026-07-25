@@ -193,6 +193,127 @@ CREATE POLICY tenant_isolation_permissions ON identity.permissions
     USING (tenant_id = shared.current_tenant_id());
 
 -- =============================================================================
+-- Product Catalog Module Tables
+-- =============================================================================
+
+-- Parts (master data)
+CREATE TABLE IF NOT EXISTS catalog.parts (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    part_number         VARCHAR(50) NOT NULL,
+    name                VARCHAR(200) NOT NULL,
+    description         VARCHAR(2000),
+    product_family      VARCHAR(100),
+    category            VARCHAR(100),
+    serialization_mode  VARCHAR(20) NOT NULL DEFAULT 'None',
+    status              VARCHAR(20) NOT NULL DEFAULT 'Active',
+    unit_of_measure     VARCHAR(20),
+    created_by          VARCHAR(100) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by         VARCHAR(100),
+    modified_at         TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_parts_tenant_part_number
+    ON catalog.parts (tenant_id, part_number);
+
+CREATE INDEX IF NOT EXISTS ix_parts_tenant_id
+    ON catalog.parts (tenant_id);
+
+CREATE INDEX IF NOT EXISTS ix_parts_product_family
+    ON catalog.parts (product_family);
+
+CREATE INDEX IF NOT EXISTS ix_parts_status
+    ON catalog.parts (status);
+
+-- Part Revisions
+CREATE TABLE IF NOT EXISTS catalog.part_revisions (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    part_id             UUID NOT NULL REFERENCES catalog.parts(id) ON DELETE CASCADE,
+    revision_code       VARCHAR(20) NOT NULL,
+    status              VARCHAR(20) NOT NULL DEFAULT 'Draft',
+    description         VARCHAR(2000),
+    change_reason       VARCHAR(1000),
+    released_at         TIMESTAMPTZ,
+    released_by         VARCHAR(100),
+    obsoleted_at        TIMESTAMPTZ,
+    created_by          VARCHAR(100) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by         VARCHAR(100),
+    modified_at         TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_part_revisions_part_code
+    ON catalog.part_revisions (part_id, revision_code);
+
+CREATE INDEX IF NOT EXISTS ix_part_revisions_tenant_id
+    ON catalog.part_revisions (tenant_id);
+
+CREATE INDEX IF NOT EXISTS ix_part_revisions_status
+    ON catalog.part_revisions (status);
+
+-- Specification Parameters
+CREATE TABLE IF NOT EXISTS catalog.specification_parameters (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    part_revision_id    UUID NOT NULL REFERENCES catalog.part_revisions(id) ON DELETE CASCADE,
+    name                VARCHAR(200) NOT NULL,
+    type                VARCHAR(20) NOT NULL,
+    unit                VARCHAR(50),
+    nominal_value       NUMERIC(18,6),
+    upper_tolerance     NUMERIC(18,6),
+    lower_tolerance     NUMERIC(18,6),
+    text_value          VARCHAR(500),
+    is_critical         BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order          INT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS ix_spec_params_tenant_id
+    ON catalog.specification_parameters (tenant_id);
+
+CREATE INDEX IF NOT EXISTS ix_spec_params_revision_id
+    ON catalog.specification_parameters (part_revision_id);
+
+-- BOM References
+CREATE TABLE IF NOT EXISTS catalog.bom_references (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    parent_part_id      UUID NOT NULL REFERENCES catalog.parts(id) ON DELETE CASCADE,
+    child_part_id       UUID NOT NULL REFERENCES catalog.parts(id) ON DELETE RESTRICT,
+    quantity            NUMERIC(18,4) NOT NULL,
+    reference_designator VARCHAR(100),
+    sort_order          INT NOT NULL DEFAULT 0
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_bom_refs_parent_child
+    ON catalog.bom_references (parent_part_id, child_part_id);
+
+CREATE INDEX IF NOT EXISTS ix_bom_refs_tenant_id
+    ON catalog.bom_references (tenant_id);
+
+CREATE INDEX IF NOT EXISTS ix_bom_refs_child_part_id
+    ON catalog.bom_references (child_part_id);
+
+-- RLS policies on catalog tables
+ALTER TABLE catalog.parts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE catalog.part_revisions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE catalog.specification_parameters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE catalog.bom_references ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_parts ON catalog.parts
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_part_revisions ON catalog.part_revisions
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_spec_params ON catalog.specification_parameters
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_bom_refs ON catalog.bom_references
+    USING (tenant_id = shared.current_tenant_id());
+
+-- =============================================================================
 -- Seed Data: Default tenant, roles, and system admin
 -- =============================================================================
 

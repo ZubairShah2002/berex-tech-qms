@@ -5,6 +5,9 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { ModulePlaceholder } from '@/pages/ModulePlaceholder'
+import { ProductsListPage } from '@/pages/products/ProductsListPage'
+import { ProductDetailPage } from '@/pages/products/ProductDetailPage'
+import { ProductFormPage } from '@/pages/products/ProductFormPage'
 
 export const router = createBrowserRouter([
   {
@@ -27,7 +30,10 @@ export const router = createBrowserRouter([
           { path: 'suppliers', element: <ModulePlaceholder moduleName="Supplier Quality" /> },
           { path: 'calibration', element: <ModulePlaceholder moduleName="Calibration" /> },
           { path: 'training', element: <ModulePlaceholder moduleName="Training" /> },
-          { path: 'products', element: <ModulePlaceholder moduleName="Product Catalog" /> },
+          { path: 'products', element: <ProductsListPage /> },
+          { path: 'products/new', element: <ProductFormPage /> },
+          { path: 'products/:id', element: <ProductDetailPage /> },
+          { path: 'products/:id/edit', element: <ProductFormPage /> },
           { path: 'spc', element: <ModulePlaceholder moduleName="Statistical Process Control" /> },
           { path: 'settings', element: <ModulePlaceholder moduleName="Settings" /> },
           { path: '*', element: <NotFoundPage /> },

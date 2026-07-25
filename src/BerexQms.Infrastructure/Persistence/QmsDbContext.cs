@@ -1,5 +1,6 @@
 using BerexQms.Application.Interfaces;
 using BerexQms.Domain.Identity.Entities;
+using BerexQms.Domain.ProductCatalog.Entities;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,11 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
+
+    public DbSet<Part> Parts => Set<Part>();
+    public DbSet<PartRevision> PartRevisions => Set<PartRevision>();
+    public DbSet<SpecificationParameter> SpecificationParameters => Set<SpecificationParameter>();
+    public DbSet<BomReference> BomReferences => Set<BomReference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

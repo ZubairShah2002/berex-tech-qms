@@ -145,6 +145,11 @@ public sealed class InspectionRecordConfiguration : IEntityTypeConfiguration<Ins
             g.Property<int>("id").ValueGeneratedOnAdd();
             g.HasKey("id");
 
+            g.Property<Guid>("tenant_id")
+                .HasColumnName("tenant_id")
+                .IsRequired()
+                .HasDefaultValueSql("shared.current_tenant_id()");
+
             g.Property(x => x.GateType)
                 .HasColumnName("gate_type")
                 .HasConversion<string>()

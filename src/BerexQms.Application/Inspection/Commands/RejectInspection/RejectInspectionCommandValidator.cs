@@ -10,7 +10,7 @@ public sealed class RejectInspectionCommandValidator : AbstractValidator<RejectI
             .NotEmpty().WithMessage("Inspection ID is required.");
 
         RuleFor(x => x.Notes)
-            .MaximumLength(2000).WithMessage("Notes cannot exceed 2000 characters.")
-            .When(x => x.Notes is not null);
+            .NotEmpty().WithMessage("Rejection reason is required.")
+            .MaximumLength(2000).WithMessage("Notes cannot exceed 2000 characters.");
     }
 }

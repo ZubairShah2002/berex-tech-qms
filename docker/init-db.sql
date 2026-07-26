@@ -369,7 +369,7 @@ CREATE INDEX IF NOT EXISTS ix_inspection_records_type
 -- Inspection Gate Results (owned by InspectionRecord)
 CREATE TABLE IF NOT EXISTS inspection.inspection_gate_results (
     id                      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    tenant_id               UUID NOT NULL,
+    tenant_id               UUID NOT NULL DEFAULT shared.current_tenant_id(),
     inspection_record_id    UUID NOT NULL REFERENCES inspection.inspection_records(id) ON DELETE CASCADE,
     gate_type               VARCHAR(30) NOT NULL,
     passed                  BOOLEAN NOT NULL,

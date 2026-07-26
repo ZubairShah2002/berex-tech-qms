@@ -151,6 +151,9 @@ public sealed class InspectionRecord : AggregateRoot<Guid>, IAuditableEntity
         if (string.IsNullOrWhiteSpace(completedBy))
             throw new DomainException("Completed by is required.");
 
+        if (_measurements.Count == 0)
+            throw new DomainException("At least one measurement must be recorded before completing an inspection.");
+
         var failCount = _measurements.Count(m => m.Result == MeasurementResult.Fail);
         Result = failCount == 0 ? InspectionResult.Pass : InspectionResult.Fail;
 

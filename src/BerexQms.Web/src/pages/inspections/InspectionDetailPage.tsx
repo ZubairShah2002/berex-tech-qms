@@ -247,7 +247,10 @@ export function InspectionDetailPage() {
   const canSetDisposition =
     inspection.status === 'Approved' && inspection.result === 'Fail'
   const canCancel =
-    inspection.status === 'Draft' || inspection.status === 'InProgress'
+    inspection.status === 'Draft' ||
+    inspection.status === 'InProgress' ||
+    inspection.status === 'PendingApproval' ||
+    inspection.status === 'Rejected'
 
   return (
     <div className={styles.page}>
@@ -340,17 +343,18 @@ export function InspectionDetailPage() {
       {showRejectForm && (
         <div className={styles.inlineForm}>
           <Input
-            label="Rejection Notes (optional)"
+            label="Rejection Reason"
             value={rejectNotes}
             onChange={(e) => setRejectNotes(e.target.value)}
             placeholder="Reason for rejection..."
+            required
           />
           <div className={styles.inlineFormActions}>
             <Button
               size="sm"
               variant="danger"
-              onClick={() => rejectMutation.mutate(rejectNotes || null)}
-              disabled={rejectMutation.isPending}
+              onClick={() => rejectMutation.mutate(rejectNotes)}
+              disabled={!rejectNotes.trim() || rejectMutation.isPending}
             >
               {rejectMutation.isPending ? 'Rejecting...' : 'Confirm Reject'}
             </Button>

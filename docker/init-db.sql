@@ -314,6 +314,178 @@ CREATE POLICY tenant_isolation_bom_refs ON catalog.bom_references
     USING (tenant_id = shared.current_tenant_id());
 
 -- =============================================================================
+-- Quality Inspection Module Tables
+-- =============================================================================
+
+-- Inspection Records
+CREATE TABLE IF NOT EXISTS inspection.inspection_records (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    inspection_number           VARCHAR(50) NOT NULL,
+    type                        VARCHAR(20) NOT NULL,
+    status                      VARCHAR(20) NOT NULL DEFAULT 'Draft',
+    part_id                     UUID NOT NULL REFERENCES catalog.parts(id) ON DELETE RESTRICT,
+    part_revision_id            UUID,
+    lot_number                  VARCHAR(100),
+    lot_size                    INT,
+    sample_size                 INT,
+    supplier_id                 UUID,
+    sampling_plan_id            UUID,
+    inspector_id                VARCHAR(100) NOT NULL,
+    result                      VARCHAR(20),
+    notes                       VARCHAR(2000),
+    completed_at                TIMESTAMPTZ,
+    completed_by                VARCHAR(100),
+    approved_at                 TIMESTAMPTZ,
+    approved_by                 VARCHAR(100),
+    rejected_at                 TIMESTAMPTZ,
+    rejected_by                 VARCHAR(100),
+    checklist_id                UUID,
+    disposition_type            VARCHAR(30),
+    disposition_justification   VARCHAR(2000),
+    disposition_approved_by     VARCHAR(100),
+    disposition_approved_at     TIMESTAMPTZ,
+    created_by                  VARCHAR(100) NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by                 VARCHAR(100),
+    modified_at                 TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_inspection_records_tenant_number
+    ON inspection.inspection_records (tenant_id, inspection_number);
+
+CREATE INDEX IF NOT EXISTS ix_inspection_records_tenant_id
+    ON inspection.inspection_records (tenant_id);
+
+CREATE INDEX IF NOT EXISTS ix_inspection_records_part_id
+    ON inspection.inspection_records (part_id);
+
+CREATE INDEX IF NOT EXISTS ix_inspection_records_status
+    ON inspection.inspection_records (status);
+
+CREATE INDEX IF NOT EXISTS ix_inspection_records_type
+    ON inspection.inspection_records (type);
+
+-- Inspection Gate Results (owned by InspectionRecord)
+CREATE TABLE IF NOT EXISTS inspection.inspection_gate_results (
+    id                      INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tenant_id               UUID NOT NULL DEFAULT shared.current_tenant_id(),
+    inspection_record_id    UUID NOT NULL REFERENCES inspection.inspection_records(id) ON DELETE CASCADE,
+    gate_type               VARCHAR(30) NOT NULL,
+    passed                  BOOLEAN NOT NULL,
+    detail                  VARCHAR(500),
+    checked_at              TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_gate_results_inspection_id
+    ON inspection.inspection_gate_results (inspection_record_id);
+
+-- Inspection Checklists
+CREATE TABLE IF NOT EXISTS inspection.inspection_checklists (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    inspection_id       UUID NOT NULL REFERENCES inspection.inspection_records(id) ON DELETE CASCADE,
+    part_revision_id    UUID NOT NULL,
+    revision_code       VARCHAR(20) NOT NULL,
+    snapshot_at         TIMESTAMPTZ NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_inspection_checklists_inspection_id
+    ON inspection.inspection_checklists (inspection_id);
+
+-- Checklist Items
+CREATE TABLE IF NOT EXISTS inspection.checklist_items (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    checklist_id            UUID NOT NULL REFERENCES inspection.inspection_checklists(id) ON DELETE CASCADE,
+    characteristic_name     VARCHAR(200) NOT NULL,
+    specification_limit     VARCHAR(200),
+    nominal_value           NUMERIC(18,6),
+    upper_limit             NUMERIC(18,6),
+    lower_limit             NUMERIC(18,6),
+    unit                    VARCHAR(20),
+    is_critical             BOOLEAN NOT NULL DEFAULT FALSE,
+    sort_order              INT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS ix_checklist_items_checklist_id
+    ON inspection.checklist_items (checklist_id);
+
+-- Measurements
+CREATE TABLE IF NOT EXISTS inspection.measurements (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    inspection_id           UUID NOT NULL REFERENCES inspection.inspection_records(id) ON DELETE CASCADE,
+    checklist_item_id       UUID,
+    characteristic_name     VARCHAR(200) NOT NULL,
+    measured_value          NUMERIC(18,6),
+    text_value              VARCHAR(500),
+    unit                    VARCHAR(20),
+    result                  VARCHAR(20) NOT NULL,
+    equipment_id            UUID,
+    operator_id             VARCHAR(100),
+    recorded_at             TIMESTAMPTZ NOT NULL,
+    sequence_number         INT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_measurements_inspection_id
+    ON inspection.measurements (inspection_id);
+
+-- Sampling Plans
+CREATE TABLE IF NOT EXISTS inspection.sampling_plans (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    part_id             UUID NOT NULL REFERENCES catalog.parts(id) ON DELETE RESTRICT,
+    supplier_id         UUID,
+    inspection_type     VARCHAR(20) NOT NULL,
+    level               VARCHAR(20) NOT NULL,
+    aql_value           NUMERIC(8,4) NOT NULL,
+    sample_size         INT NOT NULL,
+    accept_number       INT NOT NULL,
+    reject_number       INT NOT NULL,
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by          VARCHAR(100) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by         VARCHAR(100),
+    modified_at         TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_sampling_plans_tenant_id
+    ON inspection.sampling_plans (tenant_id);
+
+CREATE INDEX IF NOT EXISTS ix_sampling_plans_part_id
+    ON inspection.sampling_plans (part_id);
+
+CREATE INDEX IF NOT EXISTS ix_sampling_plans_part_type_active
+    ON inspection.sampling_plans (part_id, inspection_type, is_active);
+
+-- RLS policies on inspection tables
+ALTER TABLE inspection.inspection_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inspection.inspection_gate_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inspection.inspection_checklists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inspection.checklist_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inspection.measurements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inspection.sampling_plans ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_inspection_records ON inspection.inspection_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_inspection_gate_results ON inspection.inspection_gate_results
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_inspection_checklists ON inspection.inspection_checklists
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_checklist_items ON inspection.checklist_items
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_measurements ON inspection.measurements
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_sampling_plans ON inspection.sampling_plans
+    USING (tenant_id = shared.current_tenant_id());
+
+-- =============================================================================
 -- Seed Data: Default tenant, roles, and system admin
 -- =============================================================================
 

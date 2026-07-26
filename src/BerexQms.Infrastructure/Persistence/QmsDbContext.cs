@@ -1,5 +1,6 @@
 using BerexQms.Application.Interfaces;
 using BerexQms.Domain.Identity.Entities;
+using BerexQms.Domain.Inspection.Entities;
 using BerexQms.Domain.ProductCatalog.Entities;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.ValueObjects;
@@ -39,6 +40,12 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<PartRevision> PartRevisions => Set<PartRevision>();
     public DbSet<SpecificationParameter> SpecificationParameters => Set<SpecificationParameter>();
     public DbSet<BomReference> BomReferences => Set<BomReference>();
+
+    public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
+    public DbSet<Measurement> Measurements => Set<Measurement>();
+    public DbSet<InspectionChecklist> InspectionChecklists => Set<InspectionChecklist>();
+    public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
+    public DbSet<SamplingPlan> SamplingPlans => Set<SamplingPlan>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

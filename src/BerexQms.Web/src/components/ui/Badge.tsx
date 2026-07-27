@@ -46,6 +46,14 @@ const statusMap: Record<string, BadgeVariant> = {
   fail: 'error',
   conditionalpass: 'warning',
   'conditional-pass': 'warning',
+  underinvestigation: 'info',
+  'under-investigation': 'info',
+  pendingdisposition: 'warning',
+  'pending-disposition': 'warning',
+  reopened: 'warning',
+  minor: 'neutral',
+  major: 'warning',
+  critical: 'error',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

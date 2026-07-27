@@ -1,6 +1,7 @@
 using BerexQms.Application.Interfaces;
 using BerexQms.Domain.Identity.Entities;
 using BerexQms.Domain.Inspection.Entities;
+using BerexQms.Domain.NonConformance.Entities;
 using BerexQms.Domain.ProductCatalog.Entities;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.ValueObjects;
@@ -46,6 +47,10 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<InspectionChecklist> InspectionChecklists => Set<InspectionChecklist>();
     public DbSet<ChecklistItem> ChecklistItems => Set<ChecklistItem>();
     public DbSet<SamplingPlan> SamplingPlans => Set<SamplingPlan>();
+
+    public DbSet<NonConformanceRecord> NonConformanceRecords => Set<NonConformanceRecord>();
+    public DbSet<ContainmentAction> ContainmentActions => Set<ContainmentAction>();
+    public DbSet<Investigation> Investigations => Set<Investigation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

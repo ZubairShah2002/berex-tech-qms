@@ -11,6 +11,9 @@ import { ProductFormPage } from '@/pages/products/ProductFormPage'
 import { InspectionsListPage } from '@/pages/inspections/InspectionsListPage'
 import { InspectionDetailPage } from '@/pages/inspections/InspectionDetailPage'
 import { InspectionCreatePage } from '@/pages/inspections/InspectionCreatePage'
+import { NonConformancesListPage } from '@/pages/nonconformances/NonConformancesListPage'
+import { NonConformanceCreatePage } from '@/pages/nonconformances/NonConformanceCreatePage'
+import { NonConformanceDetailPage } from '@/pages/nonconformances/NonConformanceDetailPage'
 
 export const router = createBrowserRouter([
   {
@@ -29,7 +32,9 @@ export const router = createBrowserRouter([
           { path: 'inspections', element: <InspectionsListPage /> },
           { path: 'inspections/new', element: <InspectionCreatePage /> },
           { path: 'inspections/:id', element: <InspectionDetailPage /> },
-          { path: 'nonconformances', element: <ModulePlaceholder moduleName="Non-Conformances" /> },
+          { path: 'nonconformances', element: <NonConformancesListPage /> },
+          { path: 'nonconformances/new', element: <NonConformanceCreatePage /> },
+          { path: 'nonconformances/:id', element: <NonConformanceDetailPage /> },
           { path: 'capa', element: <ModulePlaceholder moduleName="CAPA" /> },
           { path: 'audits', element: <ModulePlaceholder moduleName="Audit Management" /> },
           { path: 'suppliers', element: <ModulePlaceholder moduleName="Supplier Quality" /> },

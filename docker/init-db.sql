@@ -545,3 +545,119 @@ VALUES (
     NOW(),
     'system'
 ) ON CONFLICT DO NOTHING;
+
+-- =============================================================================
+-- Non-Conformance (NCR) Module Tables
+-- =============================================================================
+
+CREATE SCHEMA IF NOT EXISTS ncr;
+
+-- Non-Conformance Records
+CREATE TABLE IF NOT EXISTS ncr.non_conformance_records (
+    id                              UUID PRIMARY KEY,
+    tenant_id                       UUID NOT NULL,
+    ncr_number                      VARCHAR(50) NOT NULL,
+    status                          VARCHAR(30) NOT NULL DEFAULT 'Open',
+    severity                        VARCHAR(20) NOT NULL,
+    source                          VARCHAR(30) NOT NULL,
+    detection_point                 VARCHAR(30) NOT NULL,
+    description                     VARCHAR(4000) NOT NULL,
+    part_id                         UUID NOT NULL REFERENCES catalog.parts(id) ON DELETE RESTRICT,
+    part_revision_id                UUID,
+    lot_number                      VARCHAR(100),
+    serial_number                   VARCHAR(100),
+    supplier_id                     UUID,
+    supplier_lot_number             VARCHAR(100),
+    work_order_number               VARCHAR(100),
+    customer_id                     UUID,
+    source_inspection_id            UUID,
+    quantity_affected               INT NOT NULL DEFAULT 0,
+    quantity_defective              INT NOT NULL DEFAULT 0,
+    classification_category         VARCHAR(200),
+    classification_defect_type      VARCHAR(200),
+    classification_defect_code      VARCHAR(50),
+    disposition_type                VARCHAR(30),
+    disposition_justification       VARCHAR(4000),
+    disposition_approved_by         VARCHAR(100),
+    disposition_approved_at         TIMESTAMPTZ,
+    impact_affected_quantity        INT,
+    impact_shipped_product_affected BOOLEAN,
+    impact_customer_description     VARCHAR(2000),
+    assigned_to                     VARCHAR(100),
+    capa_id                         UUID,
+    closed_at                       TIMESTAMPTZ,
+    closed_by                       VARCHAR(100),
+    reopened_at                     TIMESTAMPTZ,
+    reopened_by                     VARCHAR(100),
+    reopen_reason                   VARCHAR(4000),
+    closure_notes                   VARCHAR(4000),
+    created_by                      VARCHAR(100) NOT NULL,
+    created_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by                     VARCHAR(100),
+    modified_at                     TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_ncr_records_tenant_number
+    ON ncr.non_conformance_records (tenant_id, ncr_number);
+CREATE INDEX IF NOT EXISTS ix_ncr_records_tenant_id
+    ON ncr.non_conformance_records (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_ncr_records_part_id
+    ON ncr.non_conformance_records (part_id);
+CREATE INDEX IF NOT EXISTS ix_ncr_records_status
+    ON ncr.non_conformance_records (status);
+CREATE INDEX IF NOT EXISTS ix_ncr_records_severity
+    ON ncr.non_conformance_records (severity);
+CREATE INDEX IF NOT EXISTS ix_ncr_records_supplier_id
+    ON ncr.non_conformance_records (supplier_id);
+CREATE INDEX IF NOT EXISTS ix_ncr_records_created_at
+    ON ncr.non_conformance_records (created_at);
+
+-- Containment Actions
+CREATE TABLE IF NOT EXISTS ncr.containment_actions (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    non_conformance_id      UUID NOT NULL REFERENCES ncr.non_conformance_records(id) ON DELETE CASCADE,
+    description             VARCHAR(4000) NOT NULL,
+    action_taken_by         VARCHAR(100) NOT NULL,
+    action_taken_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_verified             BOOLEAN NOT NULL DEFAULT FALSE,
+    verified_by             VARCHAR(100),
+    verified_at             TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_containment_actions_nc_id
+    ON ncr.containment_actions (non_conformance_id);
+CREATE INDEX IF NOT EXISTS ix_containment_actions_tenant_id
+    ON ncr.containment_actions (tenant_id);
+
+-- Investigations
+CREATE TABLE IF NOT EXISTS ncr.investigations (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    non_conformance_id      UUID NOT NULL REFERENCES ncr.non_conformance_records(id) ON DELETE CASCADE,
+    investigator_id         VARCHAR(100) NOT NULL,
+    methodology             VARCHAR(200),
+    root_cause              VARCHAR(4000),
+    findings                VARCHAR(4000),
+    started_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at            TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_investigations_nc_id
+    ON ncr.investigations (non_conformance_id);
+CREATE INDEX IF NOT EXISTS ix_investigations_tenant_id
+    ON ncr.investigations (tenant_id);
+
+-- RLS Policies for NCR
+ALTER TABLE ncr.non_conformance_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ncr.containment_actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ncr.investigations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_ncr ON ncr.non_conformance_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_containment ON ncr.containment_actions
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_investigations ON ncr.investigations
+    USING (tenant_id = shared.current_tenant_id());

@@ -14,6 +14,9 @@ import { InspectionCreatePage } from '@/pages/inspections/InspectionCreatePage'
 import { NonConformancesListPage } from '@/pages/nonconformances/NonConformancesListPage'
 import { NonConformanceCreatePage } from '@/pages/nonconformances/NonConformanceCreatePage'
 import { NonConformanceDetailPage } from '@/pages/nonconformances/NonConformanceDetailPage'
+import { CapaListPage } from '@/pages/capa/CapaListPage'
+import { CapaCreatePage } from '@/pages/capa/CapaCreatePage'
+import { CapaDetailPage } from '@/pages/capa/CapaDetailPage'
 
 export const router = createBrowserRouter([
   {
@@ -35,7 +38,9 @@ export const router = createBrowserRouter([
           { path: 'nonconformances', element: <NonConformancesListPage /> },
           { path: 'nonconformances/new', element: <NonConformanceCreatePage /> },
           { path: 'nonconformances/:id', element: <NonConformanceDetailPage /> },
-          { path: 'capa', element: <ModulePlaceholder moduleName="CAPA" /> },
+          { path: 'capa', element: <CapaListPage /> },
+          { path: 'capa/new', element: <CapaCreatePage /> },
+          { path: 'capa/:id', element: <CapaDetailPage /> },
           { path: 'audits', element: <ModulePlaceholder moduleName="Audit Management" /> },
           { path: 'suppliers', element: <ModulePlaceholder moduleName="Supplier Quality" /> },
           { path: 'calibration', element: <ModulePlaceholder moduleName="Calibration" /> },

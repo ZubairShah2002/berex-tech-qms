@@ -661,3 +661,126 @@ CREATE POLICY tenant_isolation_containment ON ncr.containment_actions
 
 CREATE POLICY tenant_isolation_investigations ON ncr.investigations
     USING (tenant_id = shared.current_tenant_id());
+
+-- =============================================================================
+-- CAPA Module Tables
+-- =============================================================================
+
+-- Root Cause Analyses
+CREATE TABLE IF NOT EXISTS capa.root_cause_analyses (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    capa_id                 UUID NOT NULL,
+    methodology             VARCHAR(30) NOT NULL,
+    analysis_details        VARCHAR(4000),
+    root_cause              VARCHAR(4000),
+    contributing_factors    VARCHAR(4000),
+    started_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at            TIMESTAMPTZ,
+    analyst_id              VARCHAR(100) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_rca_capa_id
+    ON capa.root_cause_analyses (capa_id);
+CREATE INDEX IF NOT EXISTS ix_rca_tenant_id
+    ON capa.root_cause_analyses (tenant_id);
+
+-- CAPA Records
+CREATE TABLE IF NOT EXISTS capa.capa_records (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    capa_number                 VARCHAR(50) NOT NULL,
+    title                       VARCHAR(200) NOT NULL,
+    description                 VARCHAR(4000) NOT NULL,
+    status                      VARCHAR(30) NOT NULL DEFAULT 'Initiated',
+    priority                    VARCHAR(20) NOT NULL,
+    source_type                 VARCHAR(30) NOT NULL,
+    source_non_conformance_id   UUID,
+    source_audit_finding_id     UUID,
+    source_description          VARCHAR(4000),
+    owner_id                    VARCHAR(100) NOT NULL,
+    assigned_to                 VARCHAR(100),
+    source_nc_id                UUID,
+    root_cause_analysis_id      UUID REFERENCES capa.root_cause_analyses(id) ON DELETE SET NULL,
+    target_closure_date         TIMESTAMPTZ,
+    closed_at                   TIMESTAMPTZ,
+    closed_by                   VARCHAR(100),
+    closure_notes               VARCHAR(4000),
+    created_by                  VARCHAR(100) NOT NULL,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by                 VARCHAR(100),
+    modified_at                 TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_capa_records_tenant_number
+    ON capa.capa_records (tenant_id, capa_number);
+CREATE INDEX IF NOT EXISTS ix_capa_records_tenant_id
+    ON capa.capa_records (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_capa_records_status
+    ON capa.capa_records (status);
+CREATE INDEX IF NOT EXISTS ix_capa_records_priority
+    ON capa.capa_records (priority);
+CREATE INDEX IF NOT EXISTS ix_capa_records_created_at
+    ON capa.capa_records (created_at);
+
+-- CAPA Actions
+CREATE TABLE IF NOT EXISTS capa.capa_actions (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    capa_id                 UUID NOT NULL REFERENCES capa.capa_records(id) ON DELETE CASCADE,
+    action_type             VARCHAR(20) NOT NULL,
+    description             VARCHAR(4000) NOT NULL,
+    owner_id                VARCHAR(100) NOT NULL,
+    due_date                TIMESTAMPTZ NOT NULL,
+    evidence_requirement    VARCHAR(2000),
+    completion_notes        VARCHAR(4000),
+    evidence_provided       VARCHAR(4000),
+    completed_at            TIMESTAMPTZ,
+    completed_by            VARCHAR(100),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_capa_actions_capa_id
+    ON capa.capa_actions (capa_id);
+CREATE INDEX IF NOT EXISTS ix_capa_actions_tenant_id
+    ON capa.capa_actions (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_capa_actions_due_date
+    ON capa.capa_actions (due_date);
+
+-- Effectiveness Verifications
+CREATE TABLE IF NOT EXISTS capa.effectiveness_verifications (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    capa_id                 UUID NOT NULL REFERENCES capa.capa_records(id) ON DELETE CASCADE,
+    scheduled_date          TIMESTAMPTZ NOT NULL,
+    verification_criteria   VARCHAR(4000) NOT NULL,
+    verifier_id             VARCHAR(100),
+    result                  VARCHAR(4000),
+    evidence                VARCHAR(4000),
+    is_effective            BOOLEAN,
+    verified_at             TIMESTAMPTZ,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_effectiveness_verifications_capa_id
+    ON capa.effectiveness_verifications (capa_id);
+CREATE INDEX IF NOT EXISTS ix_effectiveness_verifications_tenant_id
+    ON capa.effectiveness_verifications (tenant_id);
+
+-- RLS Policies for CAPA
+ALTER TABLE capa.capa_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE capa.root_cause_analyses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE capa.capa_actions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE capa.effectiveness_verifications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_capa_records ON capa.capa_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_rca ON capa.root_cause_analyses
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_capa_actions ON capa.capa_actions
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_effectiveness_verifications ON capa.effectiveness_verifications
+    USING (tenant_id = shared.current_tenant_id());

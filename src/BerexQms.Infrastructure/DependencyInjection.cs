@@ -3,6 +3,7 @@ using BerexQms.Application.Interfaces;
 using BerexQms.Domain.Identity.Repositories;
 using BerexQms.Domain.Inspection.Repositories;
 using BerexQms.Domain.Capa.Repositories;
+using BerexQms.Domain.DocumentControl.Repositories;
 using BerexQms.Domain.NonConformance.Repositories;
 using BerexQms.Domain.ProductCatalog.Repositories;
 using BerexQms.Infrastructure.Caching;
@@ -11,6 +12,7 @@ using BerexQms.Infrastructure.Identity.Repositories;
 using BerexQms.Infrastructure.Identity.Services;
 using BerexQms.Infrastructure.Inspection.Repositories;
 using BerexQms.Infrastructure.Capa.Repositories;
+using BerexQms.Infrastructure.DocumentControl.Repositories;
 using BerexQms.Infrastructure.NonConformance.Repositories;
 using BerexQms.Infrastructure.Persistence;
 using BerexQms.Infrastructure.Persistence.Interceptors;
@@ -129,5 +131,7 @@ public static class DependencyInjection
         services.AddScoped<INonConformanceRepository, NonConformanceRepository>();
 
         services.AddScoped<ICAPARepository, CAPARepository>();
+
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
     }
 }

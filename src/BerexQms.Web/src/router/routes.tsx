@@ -17,6 +17,9 @@ import { NonConformanceDetailPage } from '@/pages/nonconformances/NonConformance
 import { CapaListPage } from '@/pages/capa/CapaListPage'
 import { CapaCreatePage } from '@/pages/capa/CapaCreatePage'
 import { CapaDetailPage } from '@/pages/capa/CapaDetailPage'
+import { DocumentListPage } from '@/pages/documents/DocumentListPage'
+import { DocumentCreatePage } from '@/pages/documents/DocumentCreatePage'
+import { DocumentDetailPage } from '@/pages/documents/DocumentDetailPage'
 
 export const router = createBrowserRouter([
   {
@@ -31,7 +34,9 @@ export const router = createBrowserRouter([
         element: <AppShell />,
         children: [
           { index: true, element: <DashboardPage /> },
-          { path: 'documents', element: <ModulePlaceholder moduleName="Document Control" /> },
+          { path: 'documents', element: <DocumentListPage /> },
+          { path: 'documents/new', element: <DocumentCreatePage /> },
+          { path: 'documents/:id', element: <DocumentDetailPage /> },
           { path: 'inspections', element: <InspectionsListPage /> },
           { path: 'inspections/new', element: <InspectionCreatePage /> },
           { path: 'inspections/:id', element: <InspectionDetailPage /> },

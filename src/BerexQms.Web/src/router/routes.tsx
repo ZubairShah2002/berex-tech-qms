@@ -20,6 +20,9 @@ import { CapaDetailPage } from '@/pages/capa/CapaDetailPage'
 import { DocumentListPage } from '@/pages/documents/DocumentListPage'
 import { DocumentCreatePage } from '@/pages/documents/DocumentCreatePage'
 import { DocumentDetailPage } from '@/pages/documents/DocumentDetailPage'
+import { AuditListPage } from '@/pages/audits/AuditListPage'
+import { AuditCreatePage } from '@/pages/audits/AuditCreatePage'
+import { AuditDetailPage } from '@/pages/audits/AuditDetailPage'
 
 export const router = createBrowserRouter([
   {
@@ -46,7 +49,9 @@ export const router = createBrowserRouter([
           { path: 'capa', element: <CapaListPage /> },
           { path: 'capa/new', element: <CapaCreatePage /> },
           { path: 'capa/:id', element: <CapaDetailPage /> },
-          { path: 'audits', element: <ModulePlaceholder moduleName="Audit Management" /> },
+          { path: 'audits', element: <AuditListPage /> },
+          { path: 'audits/new', element: <AuditCreatePage /> },
+          { path: 'audits/:id', element: <AuditDetailPage /> },
           { path: 'suppliers', element: <ModulePlaceholder moduleName="Supplier Quality" /> },
           { path: 'calibration', element: <ModulePlaceholder moduleName="Calibration" /> },
           { path: 'training', element: <ModulePlaceholder moduleName="Training" /> },

@@ -911,3 +911,117 @@ CREATE POLICY tenant_isolation_capa_actions ON capa.capa_actions
 
 CREATE POLICY tenant_isolation_effectiveness_verifications ON capa.effectiveness_verifications
     USING (tenant_id = shared.current_tenant_id());
+
+-- =====================================================
+-- AUDIT MANAGEMENT SCHEMA
+-- =====================================================
+CREATE SCHEMA IF NOT EXISTS audit;
+
+-- Audit Plans
+CREATE TABLE IF NOT EXISTS audit.audit_plans (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    plan_name               VARCHAR(200) NOT NULL,
+    year                    INTEGER NOT NULL,
+    description             VARCHAR(2000),
+    scope                   VARCHAR(2000),
+    is_active               BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by              VARCHAR(200) NOT NULL,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by             VARCHAR(200),
+    modified_at             TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_audit_plans_tenant_name_year
+    ON audit.audit_plans (tenant_id, plan_name, year);
+CREATE INDEX IF NOT EXISTS ix_audit_plans_tenant_id
+    ON audit.audit_plans (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_audit_plans_year
+    ON audit.audit_plans (year);
+CREATE INDEX IF NOT EXISTS ix_audit_plans_created_at
+    ON audit.audit_plans (created_at);
+
+-- Audit Records
+CREATE TABLE IF NOT EXISTS audit.audit_records (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    audit_plan_id               UUID NOT NULL REFERENCES audit.audit_plans(id) ON DELETE CASCADE,
+    audit_number                VARCHAR(50) NOT NULL,
+    audit_type                  VARCHAR(30) NOT NULL,
+    status                      VARCHAR(30) NOT NULL,
+    lead_auditor_id             VARCHAR(200) NOT NULL,
+    auditee_area                VARCHAR(200),
+    scheduled_date              TIMESTAMPTZ NOT NULL,
+    started_at                  TIMESTAMPTZ,
+    completed_at                TIMESTAMPTZ,
+    report_summary              VARCHAR(4000),
+    report_recommendations      VARCHAR(4000),
+    report_auditor_notes        VARCHAR(4000),
+    report_generated_at         TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_audit_records_plan_id
+    ON audit.audit_records (audit_plan_id);
+CREATE INDEX IF NOT EXISTS ix_audit_records_tenant_id
+    ON audit.audit_records (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_audit_records_status
+    ON audit.audit_records (status);
+CREATE INDEX IF NOT EXISTS ix_audit_records_scheduled_date
+    ON audit.audit_records (scheduled_date);
+
+-- Audit Findings
+CREATE TABLE IF NOT EXISTS audit.audit_findings (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    audit_record_id         UUID NOT NULL REFERENCES audit.audit_records(id) ON DELETE CASCADE,
+    classification          VARCHAR(50) NOT NULL,
+    clause_reference        VARCHAR(100) NOT NULL,
+    description             VARCHAR(4000) NOT NULL,
+    evidence                VARCHAR(4000),
+    corrective_action       VARCHAR(4000),
+    linked_capa_id          VARCHAR(200),
+    found_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS ix_audit_findings_record_id
+    ON audit.audit_findings (audit_record_id);
+CREATE INDEX IF NOT EXISTS ix_audit_findings_tenant_id
+    ON audit.audit_findings (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_audit_findings_classification
+    ON audit.audit_findings (classification);
+
+-- Audit Checklists
+CREATE TABLE IF NOT EXISTS audit.audit_checklists (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    audit_record_id         UUID NOT NULL REFERENCES audit.audit_records(id) ON DELETE CASCADE,
+    standard                VARCHAR(100) NOT NULL,
+    clause_reference        VARCHAR(100) NOT NULL,
+    requirement             VARCHAR(2000) NOT NULL,
+    is_compliant            BOOLEAN NOT NULL,
+    evidence                VARCHAR(4000),
+    notes                   VARCHAR(2000)
+);
+
+CREATE INDEX IF NOT EXISTS ix_audit_checklists_record_id
+    ON audit.audit_checklists (audit_record_id);
+CREATE INDEX IF NOT EXISTS ix_audit_checklists_tenant_id
+    ON audit.audit_checklists (tenant_id);
+
+-- RLS Policies for Audit Management
+ALTER TABLE audit.audit_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit.audit_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit.audit_findings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit.audit_checklists ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_audit_plans ON audit.audit_plans
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_audit_records ON audit.audit_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_audit_findings ON audit.audit_findings
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_audit_checklists ON audit.audit_checklists
+    USING (tenant_id = shared.current_tenant_id());

@@ -663,6 +663,133 @@ CREATE POLICY tenant_isolation_investigations ON ncr.investigations
     USING (tenant_id = shared.current_tenant_id());
 
 -- =============================================================================
+-- Document Control Module Tables
+-- =============================================================================
+
+-- Document Masters
+CREATE TABLE IF NOT EXISTS document.document_masters (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    document_number     VARCHAR(50) NOT NULL,
+    title               VARCHAR(200) NOT NULL,
+    description         VARCHAR(2000),
+    document_type       VARCHAR(50) NOT NULL,
+    owner_id            VARCHAR(200) NOT NULL,
+    department          VARCHAR(100),
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by          VARCHAR(200) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by         VARCHAR(200),
+    modified_at         TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_document_masters_tenant_number
+    ON document.document_masters (tenant_id, document_number);
+CREATE INDEX IF NOT EXISTS ix_document_masters_tenant_id
+    ON document.document_masters (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_document_masters_type
+    ON document.document_masters (document_type);
+CREATE INDEX IF NOT EXISTS ix_document_masters_created_at
+    ON document.document_masters (created_at);
+
+-- Document Versions
+CREATE TABLE IF NOT EXISTS document.document_versions (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    document_master_id          UUID NOT NULL REFERENCES document.document_masters(id) ON DELETE CASCADE,
+    version_number              VARCHAR(20) NOT NULL,
+    status                      VARCHAR(30) NOT NULL DEFAULT 'Draft',
+    content                     TEXT NOT NULL,
+    change_description          VARCHAR(2000),
+    author_id                   VARCHAR(200) NOT NULL,
+    effective_date              TIMESTAMPTZ,
+    expiry_date                 TIMESTAMPTZ,
+    attachment_file_name        VARCHAR(255),
+    attachment_content_type     VARCHAR(100),
+    attachment_size_bytes       BIGINT,
+    attachment_storage_path     VARCHAR(500),
+    attachment_content_hash     VARCHAR(128),
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    released_at                 TIMESTAMPTZ,
+    released_by                 VARCHAR(200)
+);
+
+CREATE INDEX IF NOT EXISTS ix_document_versions_master_id
+    ON document.document_versions (document_master_id);
+CREATE INDEX IF NOT EXISTS ix_document_versions_tenant_id
+    ON document.document_versions (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_document_versions_status
+    ON document.document_versions (status);
+
+-- Approval Workflows
+CREATE TABLE IF NOT EXISTS document.approval_workflows (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    document_version_id     UUID NOT NULL,
+    current_step_order      INTEGER NOT NULL DEFAULT 1,
+    is_complete             BOOLEAN NOT NULL DEFAULT FALSE,
+    is_rejected             BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at            TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_approval_workflows_version_id
+    ON document.approval_workflows (document_version_id);
+CREATE INDEX IF NOT EXISTS ix_approval_workflows_tenant_id
+    ON document.approval_workflows (tenant_id);
+
+-- Approval Steps
+CREATE TABLE IF NOT EXISTS document.approval_steps (
+    "Id"                    INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    approval_workflow_id    UUID NOT NULL REFERENCES document.approval_workflows(id) ON DELETE CASCADE,
+    step_order              INTEGER NOT NULL,
+    approver_id             VARCHAR(200) NOT NULL,
+    decision                VARCHAR(30),
+    comments                VARCHAR(2000),
+    signature               VARCHAR(500),
+    decided_at              TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_approval_steps_workflow_id
+    ON document.approval_steps (approval_workflow_id);
+
+-- Distributions
+CREATE TABLE IF NOT EXISTS document.distributions (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    document_version_id     UUID NOT NULL,
+    recipient_id            VARCHAR(200) NOT NULL,
+    distributed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    acknowledged_at         TIMESTAMPTZ,
+    compliance_deadline     TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_distributions_version_id
+    ON document.distributions (document_version_id);
+CREATE INDEX IF NOT EXISTS ix_distributions_tenant_id
+    ON document.distributions (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_distributions_recipient_id
+    ON document.distributions (recipient_id);
+
+-- RLS Policies for Document Control
+ALTER TABLE document.document_masters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document.document_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document.approval_workflows ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document.distributions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_document_masters ON document.document_masters
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_document_versions ON document.document_versions
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_approval_workflows ON document.approval_workflows
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_distributions ON document.distributions
+    USING (tenant_id = shared.current_tenant_id());
+
+-- =============================================================================
 -- CAPA Module Tables
 -- =============================================================================
 

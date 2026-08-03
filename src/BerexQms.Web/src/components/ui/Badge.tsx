@@ -64,6 +64,11 @@ const statusMap: Record<string, BadgeVariant> = {
   pendingverification: 'warning',
   closedeffective: 'success',
   closedineffective: 'error',
+  underreview: 'info',
+  'under-review': 'info',
+  released: 'success',
+  superseded: 'warning',
+  obsolete: 'neutral',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

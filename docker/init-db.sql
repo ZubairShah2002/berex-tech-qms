@@ -1025,3 +1025,139 @@ CREATE POLICY tenant_isolation_audit_findings ON audit.audit_findings
 
 CREATE POLICY tenant_isolation_audit_checklists ON audit.audit_checklists
     USING (tenant_id = shared.current_tenant_id());
+
+-- =============================================================================
+-- SUPPLIER QUALITY MODULE
+-- =============================================================================
+
+-- Suppliers (aggregate root)
+CREATE TABLE IF NOT EXISTS supplier.suppliers (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    code                    VARCHAR(50) NOT NULL,
+    name                    VARCHAR(200) NOT NULL,
+    status                  VARCHAR(30) NOT NULL,
+    risk_level              VARCHAR(20) NOT NULL,
+    tier                    VARCHAR(50),
+    approved_since          TIMESTAMPTZ,
+    contact_name            VARCHAR(200),
+    contact_role            VARCHAR(100),
+    contact_email           VARCHAR(200),
+    contact_phone           VARCHAR(50),
+    risk_assessment_level   VARCHAR(20),
+    risk_assessment_factors VARCHAR(2000),
+    risk_assessed_at        TIMESTAMPTZ,
+    created_by              VARCHAR(200) NOT NULL,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by             VARCHAR(200),
+    modified_at             TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_suppliers_tenant_id
+    ON supplier.suppliers (tenant_id);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_suppliers_tenant_code
+    ON supplier.suppliers (tenant_id, code);
+CREATE INDEX IF NOT EXISTS ix_suppliers_tenant_status
+    ON supplier.suppliers (tenant_id, status);
+CREATE INDEX IF NOT EXISTS ix_suppliers_created_at
+    ON supplier.suppliers (created_at);
+
+-- Supplier Approvals
+CREATE TABLE IF NOT EXISTS supplier.supplier_approvals (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    supplier_id             UUID NOT NULL REFERENCES supplier.suppliers(id) ON DELETE CASCADE,
+    scope_description       VARCHAR(2000) NOT NULL,
+    approved_date           TIMESTAMPTZ NOT NULL,
+    expiry_date             TIMESTAMPTZ,
+    conditions              VARCHAR(2000),
+    is_active               BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS ix_supplier_approvals_supplier_expiry
+    ON supplier.supplier_approvals (supplier_id, expiry_date);
+CREATE INDEX IF NOT EXISTS ix_supplier_approvals_tenant_id
+    ON supplier.supplier_approvals (tenant_id);
+
+-- Supplier Scorecards
+CREATE TABLE IF NOT EXISTS supplier.scorecards (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    supplier_id             UUID NOT NULL REFERENCES supplier.suppliers(id) ON DELETE CASCADE,
+    period_start            TIMESTAMPTZ NOT NULL,
+    period_end              TIMESTAMPTZ NOT NULL,
+    quality_score           NUMERIC(5, 2) NOT NULL,
+    delivery_score          NUMERIC(5, 2) NOT NULL,
+    responsiveness_score    NUMERIC(5, 2) NOT NULL,
+    cost_score              NUMERIC(5, 2) NOT NULL,
+    overall_score           NUMERIC(5, 2) NOT NULL,
+    status                  VARCHAR(20) NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_scorecards_supplier_period
+    ON supplier.scorecards (supplier_id, period_start);
+CREATE INDEX IF NOT EXISTS ix_scorecards_tenant_id
+    ON supplier.scorecards (tenant_id);
+
+-- SCAR Records
+CREATE TABLE IF NOT EXISTS supplier.scar_records (
+    id                              UUID PRIMARY KEY,
+    tenant_id                       UUID NOT NULL,
+    supplier_id                     UUID NOT NULL REFERENCES supplier.suppliers(id) ON DELETE CASCADE,
+    scar_number                     VARCHAR(50) NOT NULL,
+    nc_id                           UUID,
+    defect_description              VARCHAR(4000) NOT NULL,
+    severity                        VARCHAR(50) NOT NULL,
+    issued_date                     TIMESTAMPTZ NOT NULL,
+    response_deadline               TIMESTAMPTZ NOT NULL,
+    status                          VARCHAR(30) NOT NULL,
+    response_root_cause             VARCHAR(4000),
+    response_corrective_actions     VARCHAR(4000),
+    response_evidence_refs          VARCHAR(4000),
+    response_date                   TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_scar_records_supplier_status
+    ON supplier.scar_records (supplier_id, status);
+CREATE INDEX IF NOT EXISTS ix_scar_records_nc_id
+    ON supplier.scar_records (nc_id);
+CREATE INDEX IF NOT EXISTS ix_scar_records_tenant_id
+    ON supplier.scar_records (tenant_id);
+
+-- Approved Parts
+CREATE TABLE IF NOT EXISTS supplier.approved_parts (
+    id                      UUID PRIMARY KEY,
+    tenant_id               UUID NOT NULL,
+    supplier_id             UUID NOT NULL REFERENCES supplier.suppliers(id) ON DELETE CASCADE,
+    part_id                 UUID NOT NULL,
+    revision_scope          VARCHAR(200),
+    approval_date           TIMESTAMPTZ NOT NULL,
+    is_active               BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_approved_parts_supplier_part
+    ON supplier.approved_parts (supplier_id, part_id) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS ix_approved_parts_tenant_id
+    ON supplier.approved_parts (tenant_id);
+
+-- RLS Policies for Supplier Quality
+ALTER TABLE supplier.suppliers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE supplier.supplier_approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE supplier.scorecards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE supplier.scar_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE supplier.approved_parts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_suppliers ON supplier.suppliers
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_supplier_approvals ON supplier.supplier_approvals
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_scorecards ON supplier.scorecards
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_scar_records ON supplier.scar_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_approved_parts ON supplier.approved_parts
+    USING (tenant_id = shared.current_tenant_id());

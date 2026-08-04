@@ -19,6 +19,8 @@ using BerexQms.Infrastructure.NonConformance.Repositories;
 using BerexQms.Infrastructure.Persistence;
 using BerexQms.Infrastructure.Persistence.Interceptors;
 using BerexQms.Infrastructure.ProductCatalog.Repositories;
+using BerexQms.Domain.SupplierQuality.Repositories;
+using BerexQms.Infrastructure.SupplierQuality.Repositories;
 using BerexQms.Infrastructure.Services;
 using BerexQms.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -137,5 +139,7 @@ public static class DependencyInjection
         services.AddScoped<IDocumentRepository, DocumentRepository>();
 
         services.AddScoped<IAuditRepository, AuditRepository>();
+
+        services.AddScoped<ISupplierRepository, SupplierRepository>();
     }
 }

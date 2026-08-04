@@ -78,6 +78,19 @@ const statusMap: Record<string, BadgeVariant> = {
   external: 'warning',
   supplier: 'neutral',
   certification: 'success',
+  prospective: 'info',
+  conditionalapproval: 'warning',
+  'conditional-approval': 'warning',
+  onprobation: 'error',
+  'on-probation': 'error',
+  disqualified: 'error',
+  issued: 'info',
+  awaitingresponse: 'warning',
+  'awaiting-response': 'warning',
+  accepted: 'success',
+  followup: 'warning',
+  'follow-up': 'warning',
+  published: 'success',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

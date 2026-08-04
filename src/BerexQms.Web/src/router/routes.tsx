@@ -23,6 +23,9 @@ import { DocumentDetailPage } from '@/pages/documents/DocumentDetailPage'
 import { AuditListPage } from '@/pages/audits/AuditListPage'
 import { AuditCreatePage } from '@/pages/audits/AuditCreatePage'
 import { AuditDetailPage } from '@/pages/audits/AuditDetailPage'
+import { SupplierListPage } from '@/pages/suppliers/SupplierListPage'
+import { SupplierCreatePage } from '@/pages/suppliers/SupplierCreatePage'
+import { SupplierDetailPage } from '@/pages/suppliers/SupplierDetailPage'
 
 export const router = createBrowserRouter([
   {
@@ -52,7 +55,9 @@ export const router = createBrowserRouter([
           { path: 'audits', element: <AuditListPage /> },
           { path: 'audits/new', element: <AuditCreatePage /> },
           { path: 'audits/:id', element: <AuditDetailPage /> },
-          { path: 'suppliers', element: <ModulePlaceholder moduleName="Supplier Quality" /> },
+          { path: 'suppliers', element: <SupplierListPage /> },
+          { path: 'suppliers/new', element: <SupplierCreatePage /> },
+          { path: 'suppliers/:id', element: <SupplierDetailPage /> },
           { path: 'calibration', element: <ModulePlaceholder moduleName="Calibration" /> },
           { path: 'training', element: <ModulePlaceholder moduleName="Training" /> },
           { path: 'products', element: <ProductsListPage /> },

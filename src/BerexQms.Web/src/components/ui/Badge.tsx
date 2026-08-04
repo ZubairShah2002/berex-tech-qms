@@ -91,6 +91,19 @@ const statusMap: Record<string, BadgeVariant> = {
   followup: 'warning',
   'follow-up': 'warning',
   published: 'success',
+  dueforcalibration: 'warning',
+  'due-for-calibration': 'warning',
+  incalibration: 'info',
+  'in-calibration': 'info',
+  outofservice: 'error',
+  'out-of-service': 'error',
+  retired: 'neutral',
+  passwithadjustment: 'warning',
+  'pass-with-adjustment': 'warning',
+  limited: 'warning',
+  acceptable: 'success',
+  marginal: 'warning',
+  unacceptable: 'error',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

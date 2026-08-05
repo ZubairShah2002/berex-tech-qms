@@ -4,6 +4,7 @@ using BerexQms.Domain.Inspection.Entities;
 using BerexQms.Domain.NonConformance.Entities;
 using BerexQms.Domain.ProductCatalog.Entities;
 using BerexQms.Domain.SupplierQuality.Entities;
+using BerexQms.Domain.Calibration.Entities;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -58,6 +59,12 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<SupplierScorecard> SupplierScorecards => Set<SupplierScorecard>();
     public DbSet<SCARRecord> ScarRecords => Set<SCARRecord>();
     public DbSet<ApprovedPart> ApprovedParts => Set<ApprovedPart>();
+
+    public DbSet<Equipment> Equipment => Set<Equipment>();
+    public DbSet<CalibrationRecord> CalibrationRecords => Set<CalibrationRecord>();
+    public DbSet<CalibrationSchedule> CalibrationSchedules => Set<CalibrationSchedule>();
+    public DbSet<GaugeControl> GaugeControls => Set<GaugeControl>();
+    public DbSet<ImpactAssessment> ImpactAssessments => Set<ImpactAssessment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

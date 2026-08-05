@@ -1161,3 +1161,129 @@ CREATE POLICY tenant_isolation_scar_records ON supplier.scar_records
 
 CREATE POLICY tenant_isolation_approved_parts ON supplier.approved_parts
     USING (tenant_id = shared.current_tenant_id());
+
+-- ============================================================================
+-- Calibration & Metrology Module
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS calibration.equipment (
+    id              UUID PRIMARY KEY,
+    tenant_id       UUID NOT NULL,
+    code            VARCHAR(50) NOT NULL,
+    name            VARCHAR(200) NOT NULL,
+    type            VARCHAR(100),
+    manufacturer    VARCHAR(200),
+    model           VARCHAR(200),
+    serial_number   VARCHAR(100),
+    status          VARCHAR(50) NOT NULL DEFAULT 'Active',
+    location        VARCHAR(200),
+    department      VARCHAR(200),
+    area            VARCHAR(200),
+    custodian_id    UUID,
+    created_by      VARCHAR(100) NOT NULL,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by     VARCHAR(100),
+    modified_at     TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_equipment_tenant_code
+    ON calibration.equipment (tenant_id, code);
+CREATE INDEX IF NOT EXISTS ix_equipment_tenant_status
+    ON calibration.equipment (tenant_id, status);
+
+CREATE TABLE IF NOT EXISTS calibration.schedules (
+    id              UUID PRIMARY KEY,
+    tenant_id       UUID NOT NULL,
+    equipment_id    UUID NOT NULL REFERENCES calibration.equipment(id) ON DELETE CASCADE,
+    interval_days   INTEGER NOT NULL,
+    lead_time_days  INTEGER NOT NULL DEFAULT 0,
+    lab_type        VARCHAR(100) NOT NULL,
+    procedure_ref   VARCHAR(200),
+    next_due_date   TIMESTAMPTZ NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_schedules_equipment_id
+    ON calibration.schedules (equipment_id);
+CREATE INDEX IF NOT EXISTS ix_schedules_next_due
+    ON calibration.schedules (next_due_date);
+CREATE INDEX IF NOT EXISTS ix_schedules_tenant_id
+    ON calibration.schedules (tenant_id);
+
+CREATE TABLE IF NOT EXISTS calibration.calibration_records (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    equipment_id                UUID NOT NULL REFERENCES calibration.equipment(id) ON DELETE CASCADE,
+    calibration_date            TIMESTAMPTZ NOT NULL,
+    result                      VARCHAR(50) NOT NULL,
+    technician_id               UUID,
+    procedure_ref               VARCHAR(200),
+    notes                       VARCHAR(2000),
+    environmental_conditions    VARCHAR(500),
+    next_due_date               TIMESTAMPTZ,
+    cert_issuing_lab            VARCHAR(200),
+    cert_accreditation_ref      VARCHAR(200),
+    cert_file_ref               VARCHAR(500),
+    cert_valid_from             TIMESTAMPTZ,
+    cert_valid_until            TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS ix_cal_records_equip_date
+    ON calibration.calibration_records (equipment_id, calibration_date);
+CREATE INDEX IF NOT EXISTS ix_cal_records_next_due
+    ON calibration.calibration_records (next_due_date);
+CREATE INDEX IF NOT EXISTS ix_cal_records_tenant_id
+    ON calibration.calibration_records (tenant_id);
+
+CREATE TABLE IF NOT EXISTS calibration.gauge_rr_studies (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    equipment_id        UUID NOT NULL REFERENCES calibration.equipment(id) ON DELETE CASCADE,
+    characteristic_id   UUID,
+    study_date          TIMESTAMPTZ NOT NULL,
+    total_grr_pct       NUMERIC(5,2) NOT NULL,
+    repeatability_pct   NUMERIC(5,2) NOT NULL,
+    reproducibility_pct NUMERIC(5,2) NOT NULL,
+    part_variation_pct  NUMERIC(5,2),
+    ndc                 INTEGER,
+    result              VARCHAR(50) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_gauge_rr_equip_char
+    ON calibration.gauge_rr_studies (equipment_id, characteristic_id);
+CREATE INDEX IF NOT EXISTS ix_gauge_rr_tenant_id
+    ON calibration.gauge_rr_studies (tenant_id);
+
+CREATE TABLE IF NOT EXISTS calibration.impact_assessments (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    equipment_id                UUID NOT NULL REFERENCES calibration.equipment(id) ON DELETE CASCADE,
+    failed_cal_id               UUID NOT NULL REFERENCES calibration.calibration_records(id),
+    affected_from               TIMESTAMPTZ NOT NULL,
+    affected_to                 TIMESTAMPTZ NOT NULL,
+    affected_inspection_count   INTEGER NOT NULL DEFAULT 0,
+    status                      VARCHAR(50) NOT NULL DEFAULT 'Open',
+    reviewed_by                 UUID,
+    notes                       VARCHAR(2000)
+);
+CREATE INDEX IF NOT EXISTS ix_impact_equip_cal
+    ON calibration.impact_assessments (equipment_id, failed_cal_id);
+CREATE INDEX IF NOT EXISTS ix_impact_tenant_id
+    ON calibration.impact_assessments (tenant_id);
+
+-- Calibration RLS Policies
+ALTER TABLE calibration.equipment ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calibration.schedules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calibration.calibration_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calibration.gauge_rr_studies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE calibration.impact_assessments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_equipment ON calibration.equipment
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_cal_schedules ON calibration.schedules
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_cal_records ON calibration.calibration_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_gauge_rr ON calibration.gauge_rr_studies
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_impact ON calibration.impact_assessments
+    USING (tenant_id = shared.current_tenant_id());

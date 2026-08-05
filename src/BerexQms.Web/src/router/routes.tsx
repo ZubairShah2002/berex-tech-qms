@@ -29,6 +29,14 @@ import { SupplierDetailPage } from '@/pages/suppliers/SupplierDetailPage'
 import { EquipmentListPage } from '@/pages/calibration/EquipmentListPage'
 import { EquipmentCreatePage } from '@/pages/calibration/EquipmentCreatePage'
 import { EquipmentDetailPage } from '@/pages/calibration/EquipmentDetailPage'
+import { QualificationsListPage } from '@/pages/training/QualificationsListPage'
+import { QualificationCreatePage } from '@/pages/training/QualificationCreatePage'
+import { QualificationDetailPage } from '@/pages/training/QualificationDetailPage'
+import { CoursesListPage } from '@/pages/training/CoursesListPage'
+import { CourseCreatePage } from '@/pages/training/CourseCreatePage'
+import { AssignmentsListPage } from '@/pages/training/AssignmentsListPage'
+import { AssignmentCreatePage } from '@/pages/training/AssignmentCreatePage'
+import { SkillMatrixPage } from '@/pages/training/SkillMatrixPage'
 
 export const router = createBrowserRouter([
   {
@@ -64,7 +72,14 @@ export const router = createBrowserRouter([
           { path: 'calibration', element: <EquipmentListPage /> },
           { path: 'calibration/new', element: <EquipmentCreatePage /> },
           { path: 'calibration/:id', element: <EquipmentDetailPage /> },
-          { path: 'training', element: <ModulePlaceholder moduleName="Training" /> },
+          { path: 'training', element: <QualificationsListPage /> },
+          { path: 'training/qualifications/new', element: <QualificationCreatePage /> },
+          { path: 'training/qualifications/:id', element: <QualificationDetailPage /> },
+          { path: 'training/courses', element: <CoursesListPage /> },
+          { path: 'training/courses/new', element: <CourseCreatePage /> },
+          { path: 'training/assignments', element: <AssignmentsListPage /> },
+          { path: 'training/assignments/new', element: <AssignmentCreatePage /> },
+          { path: 'training/skill-matrix', element: <SkillMatrixPage /> },
           { path: 'products', element: <ProductsListPage /> },
           { path: 'products/new', element: <ProductFormPage /> },
           { path: 'products/:id', element: <ProductDetailPage /> },

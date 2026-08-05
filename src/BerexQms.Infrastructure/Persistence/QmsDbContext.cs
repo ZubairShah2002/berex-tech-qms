@@ -5,6 +5,7 @@ using BerexQms.Domain.NonConformance.Entities;
 using BerexQms.Domain.ProductCatalog.Entities;
 using BerexQms.Domain.SupplierQuality.Entities;
 using BerexQms.Domain.Calibration.Entities;
+using BerexQms.Domain.Training.Entities;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -65,6 +66,11 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<CalibrationSchedule> CalibrationSchedules => Set<CalibrationSchedule>();
     public DbSet<GaugeControl> GaugeControls => Set<GaugeControl>();
     public DbSet<ImpactAssessment> ImpactAssessments => Set<ImpactAssessment>();
+
+    public DbSet<Qualification> Qualifications => Set<Qualification>();
+    public DbSet<TrainingCourse> TrainingCourses => Set<TrainingCourse>();
+    public DbSet<CompetencyRecord> CompetencyRecords => Set<CompetencyRecord>();
+    public DbSet<TrainingAssignment> TrainingAssignments => Set<TrainingAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

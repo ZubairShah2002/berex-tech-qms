@@ -104,6 +104,16 @@ const statusMap: Record<string, BadgeVariant> = {
   acceptable: 'success',
   marginal: 'warning',
   unacceptable: 'error',
+  // Training & Competency statuses
+  assigned: 'info',
+  notstarted: 'neutral',
+  'not-started': 'neutral',
+  intraining: 'info',
+  'in-training': 'info',
+  qualified: 'success',
+  expired: 'error',
+  suspended: 'warning',
+  revoked: 'error',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

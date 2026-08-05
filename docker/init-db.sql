@@ -1287,3 +1287,118 @@ CREATE POLICY tenant_isolation_gauge_rr ON calibration.gauge_rr_studies
 
 CREATE POLICY tenant_isolation_impact ON calibration.impact_assessments
     USING (tenant_id = shared.current_tenant_id());
+
+-- =================================================================
+-- Training & Competency Module (Sprint 10)
+-- =================================================================
+
+-- Qualifications
+CREATE TABLE IF NOT EXISTS training.qualifications (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    code                        VARCHAR(50) NOT NULL,
+    name                        VARCHAR(200) NOT NULL,
+    description                 VARCHAR(2000),
+    scope_product_family        VARCHAR(200),
+    scope_inspection_type       VARCHAR(200),
+    scope_process_area          VARCHAR(200),
+    validity_months             INT NOT NULL,
+    renewal_window_days         INT NOT NULL DEFAULT 0,
+    is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by                  VARCHAR(100) NOT NULL,
+    created_at                  TIMESTAMP NOT NULL DEFAULT NOW(),
+    modified_by                 VARCHAR(100),
+    modified_at                 TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_qualifications_tenant_code
+    ON training.qualifications (tenant_id, code);
+CREATE INDEX IF NOT EXISTS ix_qualifications_tenant_active
+    ON training.qualifications (tenant_id, is_active);
+
+-- Training Courses
+CREATE TABLE IF NOT EXISTS training.courses (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    code                        VARCHAR(50) NOT NULL,
+    name                        VARCHAR(200) NOT NULL,
+    description                 VARCHAR(4000),
+    duration_hours              NUMERIC(6,2) NOT NULL,
+    assessment_type             VARCHAR(100),
+    pass_criteria               VARCHAR(1000),
+    qualification_id            UUID REFERENCES training.qualifications(id),
+    is_active                   BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by                  VARCHAR(100) NOT NULL,
+    created_at                  TIMESTAMP NOT NULL DEFAULT NOW(),
+    modified_by                 VARCHAR(100),
+    modified_at                 TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_courses_tenant_code
+    ON training.courses (tenant_id, code);
+CREATE INDEX IF NOT EXISTS ix_courses_tenant_qualification
+    ON training.courses (tenant_id, qualification_id);
+
+-- Competency Records
+CREATE TABLE IF NOT EXISTS training.competency_records (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    employee_id                 UUID NOT NULL,
+    qualification_id            UUID NOT NULL REFERENCES training.qualifications(id),
+    status                      VARCHAR(50) NOT NULL DEFAULT 'NotStarted',
+    qualified_date              TIMESTAMP,
+    expiry_date                 TIMESTAMP,
+    assessor_id                 UUID,
+    evidence_ref                VARCHAR(500)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_competency_records_tenant_employee_qualification
+    ON training.competency_records (tenant_id, employee_id, qualification_id);
+CREATE INDEX IF NOT EXISTS ix_competency_records_tenant_status
+    ON training.competency_records (tenant_id, status);
+CREATE INDEX IF NOT EXISTS ix_competency_records_tenant_expiry
+    ON training.competency_records (tenant_id, expiry_date);
+
+-- Training Assignments
+CREATE TABLE IF NOT EXISTS training.training_assignments (
+    id                          UUID PRIMARY KEY,
+    tenant_id                   UUID NOT NULL,
+    employee_id                 UUID NOT NULL,
+    course_id                   UUID NOT NULL REFERENCES training.courses(id),
+    assigned_by                 UUID NOT NULL,
+    assigned_date               TIMESTAMP NOT NULL DEFAULT NOW(),
+    due_date                    TIMESTAMP NOT NULL,
+    status                      VARCHAR(50) NOT NULL DEFAULT 'Assigned',
+    completion_date             TIMESTAMP,
+    score                       NUMERIC(6,2),
+    result                      VARCHAR(50),
+    assessor_id                 UUID,
+    evidence_ref                VARCHAR(500),
+    created_by                  VARCHAR(100) NOT NULL,
+    created_at                  TIMESTAMP NOT NULL DEFAULT NOW(),
+    modified_by                 VARCHAR(100),
+    modified_at                 TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS ix_training_assignments_tenant_employee
+    ON training.training_assignments (tenant_id, employee_id);
+CREATE INDEX IF NOT EXISTS ix_training_assignments_tenant_course
+    ON training.training_assignments (tenant_id, course_id);
+CREATE INDEX IF NOT EXISTS ix_training_assignments_tenant_status
+    ON training.training_assignments (tenant_id, status);
+CREATE INDEX IF NOT EXISTS ix_training_assignments_tenant_due
+    ON training.training_assignments (tenant_id, due_date);
+
+-- Training RLS Policies
+ALTER TABLE training.qualifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE training.courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE training.competency_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE training.training_assignments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_qualifications ON training.qualifications
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_courses ON training.courses
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_competency_records ON training.competency_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_training_assignments ON training.training_assignments
+    USING (tenant_id = shared.current_tenant_id());

@@ -25,16 +25,10 @@ internal sealed class GetSkillMatrixQueryHandler
         var records = await _competencyRepository.GetAllForSkillMatrixAsync(
             request.Department, request.ProductFamily, cancellationToken);
 
-        // Build a qualification lookup for codes/names
-        var qualificationIds = records.Select(r => r.QualificationId).Distinct().ToList();
-        var qualifications = new Dictionary<Guid, (string Code, string Name)>();
-
-        foreach (var qId in qualificationIds)
-        {
-            var q = await _qualificationRepository.GetByIdAsync(qId, cancellationToken);
-            if (q is not null)
-                qualifications[qId] = (q.Code, q.Name);
-        }
+        // Batch-load all referenced qualifications in a single query
+        var qualificationIds = records.Select(r => r.QualificationId).Distinct();
+        var qualificationList = await _qualificationRepository.GetByIdsAsync(qualificationIds, cancellationToken);
+        var qualifications = qualificationList.ToDictionary(q => q.Id, q => (q.Code, q.Name));
 
         var entries = records.Select(r =>
         {

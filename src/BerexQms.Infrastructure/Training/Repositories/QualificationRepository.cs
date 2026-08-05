@@ -14,4 +14,14 @@ public sealed class QualificationRepository : RepositoryBase<Qualification>, IQu
         var normalized = code.Trim().ToUpperInvariant();
         return await DbSet.AnyAsync(q => q.Code == normalized, cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Qualification>> GetByIdsAsync(
+        IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        var idList = ids.ToList();
+        if (idList.Count == 0)
+            return Array.Empty<Qualification>();
+
+        return await DbSet.Where(q => idList.Contains(q.Id)).ToListAsync(cancellationToken);
+    }
 }

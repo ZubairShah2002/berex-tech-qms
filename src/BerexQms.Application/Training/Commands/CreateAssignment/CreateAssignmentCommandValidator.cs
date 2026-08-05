@@ -8,7 +8,8 @@ public sealed class CreateAssignmentCommandValidator : AbstractValidator<CreateA
     {
         RuleFor(x => x.EmployeeId).NotEmpty();
         RuleFor(x => x.CourseId).NotEmpty();
-        RuleFor(x => x.DueDate).GreaterThan(DateTime.UtcNow)
+        RuleFor(x => x.DueDate)
+            .Must(d => d > DateTime.UtcNow)
             .WithMessage("Due date must be in the future.");
     }
 }

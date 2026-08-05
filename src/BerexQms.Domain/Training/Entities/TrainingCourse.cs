@@ -75,4 +75,9 @@ public sealed class TrainingCourse : AggregateRoot<Guid>, IAuditableEntity
         PassCriteria = passCriteria?.Trim();
         QualificationId = qualificationId;
     }
+
+    public void Deactivate()
+    {
+        IsActive = false;
+    }
 }

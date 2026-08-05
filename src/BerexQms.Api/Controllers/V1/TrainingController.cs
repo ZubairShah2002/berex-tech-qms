@@ -201,7 +201,7 @@ public sealed class TrainingController : ControllerBase
             : BadRequest(new { error = result.Error.Message });
     }
 
-    [HttpPost("assignments/{id:guid}/complete")]
+    [HttpPut("assignments/{id:guid}/complete")]
     public async Task<IActionResult> CompleteAssignment(
         Guid id,
         [FromBody] CompleteAssignmentRequest request,

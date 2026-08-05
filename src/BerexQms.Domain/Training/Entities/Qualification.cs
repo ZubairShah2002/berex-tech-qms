@@ -73,6 +73,8 @@ public sealed class Qualification : AggregateRoot<Guid>, IAuditableEntity
             throw new DomainException("Qualification name is required.");
         if (validityMonths <= 0)
             throw new DomainException("Validity period must be greater than zero.");
+        if (renewalWindowDays < 0)
+            throw new DomainException("Renewal window cannot be negative.");
 
         Name = name.Trim();
         Description = description?.Trim();

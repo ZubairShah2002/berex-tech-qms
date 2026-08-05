@@ -25,6 +25,8 @@ using BerexQms.Domain.Calibration.Repositories;
 using BerexQms.Infrastructure.Calibration.Repositories;
 using BerexQms.Domain.Training.Repositories;
 using BerexQms.Infrastructure.Training.Repositories;
+using BerexQms.Domain.Spc.Repositories;
+using BerexQms.Infrastructure.Spc.Repositories;
 using BerexQms.Infrastructure.Services;
 using BerexQms.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -152,5 +154,7 @@ public static class DependencyInjection
         services.AddScoped<ITrainingCourseRepository, TrainingCourseRepository>();
         services.AddScoped<ITrainingAssignmentRepository, TrainingAssignmentRepository>();
         services.AddScoped<ICompetencyRecordRepository, CompetencyRecordRepository>();
+
+        services.AddScoped<IControlChartRepository, ControlChartRepository>();
     }
 }

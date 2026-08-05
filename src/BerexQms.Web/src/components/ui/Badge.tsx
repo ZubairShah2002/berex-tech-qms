@@ -104,6 +104,11 @@ const statusMap: Record<string, BadgeVariant> = {
   acceptable: 'success',
   marginal: 'warning',
   unacceptable: 'error',
+  // SPC statuses
+  outofcontrol: 'error',
+  'out-of-control': 'error',
+  incontrol: 'success',
+  'in-control': 'success',
   // Training & Competency statuses
   assigned: 'info',
   notstarted: 'neutral',

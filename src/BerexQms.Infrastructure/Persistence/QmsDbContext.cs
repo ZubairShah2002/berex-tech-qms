@@ -6,6 +6,7 @@ using BerexQms.Domain.ProductCatalog.Entities;
 using BerexQms.Domain.SupplierQuality.Entities;
 using BerexQms.Domain.Calibration.Entities;
 using BerexQms.Domain.Training.Entities;
+using BerexQms.Domain.Spc.Entities;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -71,6 +72,9 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<TrainingCourse> TrainingCourses => Set<TrainingCourse>();
     public DbSet<CompetencyRecord> CompetencyRecords => Set<CompetencyRecord>();
     public DbSet<TrainingAssignment> TrainingAssignments => Set<TrainingAssignment>();
+
+    public DbSet<ControlChart> ControlCharts => Set<ControlChart>();
+    public DbSet<DataPoint> SpcDataPoints => Set<DataPoint>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

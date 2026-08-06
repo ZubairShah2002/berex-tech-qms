@@ -1402,3 +1402,73 @@ CREATE POLICY tenant_isolation_competency_records ON training.competency_records
 
 CREATE POLICY tenant_isolation_training_assignments ON training.training_assignments
     USING (tenant_id = shared.current_tenant_id());
+
+-- ============================================================================
+-- SPC (Statistical Process Control) Schema
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS spc.control_charts (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES identity.tenants(id),
+    code VARCHAR(50) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    chart_type VARCHAR(50) NOT NULL,
+    part_id UUID NOT NULL,
+    characteristic_name VARCHAR(200) NOT NULL,
+    subgroup_size INT NOT NULL DEFAULT 1,
+    status VARCHAR(50) NOT NULL DEFAULT 'Active',
+    upper_spec_limit NUMERIC(18,6),
+    lower_spec_limit NUMERIC(18,6),
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Control limits (flattened from ControlLimits value object)
+    ucl NUMERIC(18,6),
+    center_line NUMERIC(18,6),
+    lcl NUMERIC(18,6),
+    cl_upper_spec_limit NUMERIC(18,6),
+    cl_lower_spec_limit NUMERIC(18,6),
+    -- Process capability (flattened from ProcessCapability value object)
+    cp NUMERIC(10,4),
+    cpk NUMERIC(10,4),
+    pp NUMERIC(10,4),
+    ppk NUMERIC(10,4),
+    cap_mean NUMERIC(18,6),
+    cap_std_dev NUMERIC(18,6),
+    cap_sample_size INT,
+    cap_calculated_at TIMESTAMPTZ,
+    -- Audit
+    created_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by VARCHAR(100),
+    modified_at TIMESTAMPTZ,
+    CONSTRAINT uq_control_charts_tenant_code UNIQUE (tenant_id, code)
+);
+
+-- ix_control_charts_tenant_code is implicitly created by UNIQUE constraint uq_control_charts_tenant_code
+CREATE INDEX IF NOT EXISTS ix_control_charts_tenant_part ON spc.control_charts(tenant_id, part_id);
+CREATE INDEX IF NOT EXISTS ix_control_charts_tenant_status ON spc.control_charts(tenant_id, status);
+
+CREATE TABLE IF NOT EXISTS spc.data_points (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES identity.tenants(id),
+    control_chart_id UUID NOT NULL REFERENCES spc.control_charts(id) ON DELETE CASCADE,
+    value NUMERIC(18,6) NOT NULL,
+    subgroup_values VARCHAR(2000),
+    sample_size INT NOT NULL DEFAULT 1,
+    timestamp TIMESTAMPTZ NOT NULL,
+    inspection_id UUID,
+    rule_violation VARCHAR(100),
+    is_out_of_control BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS ix_data_points_chart_timestamp ON spc.data_points(control_chart_id, timestamp);
+CREATE INDEX IF NOT EXISTS ix_data_points_tenant_inspection ON spc.data_points(tenant_id, inspection_id);
+
+-- SPC RLS Policies
+ALTER TABLE spc.control_charts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE spc.data_points ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_control_charts ON spc.control_charts
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_data_points ON spc.data_points
+    USING (tenant_id = shared.current_tenant_id());

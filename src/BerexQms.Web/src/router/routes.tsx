@@ -37,6 +37,9 @@ import { CourseCreatePage } from '@/pages/training/CourseCreatePage'
 import { AssignmentsListPage } from '@/pages/training/AssignmentsListPage'
 import { AssignmentCreatePage } from '@/pages/training/AssignmentCreatePage'
 import { SkillMatrixPage } from '@/pages/training/SkillMatrixPage'
+import { SpcListPage } from '@/pages/spc/SpcListPage'
+import { SpcCreatePage } from '@/pages/spc/SpcCreatePage'
+import { SpcDetailPage } from '@/pages/spc/SpcDetailPage'
 
 export const router = createBrowserRouter([
   {
@@ -84,7 +87,9 @@ export const router = createBrowserRouter([
           { path: 'products/new', element: <ProductFormPage /> },
           { path: 'products/:id', element: <ProductDetailPage /> },
           { path: 'products/:id/edit', element: <ProductFormPage /> },
-          { path: 'spc', element: <ModulePlaceholder moduleName="Statistical Process Control" /> },
+          { path: 'spc', element: <SpcListPage /> },
+          { path: 'spc/new', element: <SpcCreatePage /> },
+          { path: 'spc/:id', element: <SpcDetailPage /> },
           { path: 'settings', element: <ModulePlaceholder moduleName="Settings" /> },
           { path: '*', element: <NotFoundPage /> },
         ],

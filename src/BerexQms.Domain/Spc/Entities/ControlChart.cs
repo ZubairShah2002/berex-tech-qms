@@ -129,8 +129,8 @@ public sealed class ControlChart : AggregateRoot<Guid>, IAuditableEntity
 
     public void SetControlLimits(decimal upperControlLimit, decimal centerLine, decimal lowerControlLimit)
     {
-        if (upperControlLimit <= lowerControlLimit)
-            throw new DomainException("Upper control limit must be greater than the lower control limit.");
+        if (upperControlLimit < lowerControlLimit)
+            throw new DomainException("Upper control limit must be greater than or equal to the lower control limit.");
 
         ControlLimits = new ControlLimits(
             upperControlLimit, centerLine, lowerControlLimit, UpperSpecLimit, LowerSpecLimit);

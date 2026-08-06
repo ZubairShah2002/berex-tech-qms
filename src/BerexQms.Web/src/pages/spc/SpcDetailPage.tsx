@@ -112,8 +112,8 @@ function ControlChartSvg({ dataPoints, limits }: {
     allValues.push(limits.upperControlLimit, limits.lowerControlLimit, limits.centerLine)
   }
 
-  const minVal = Math.min(...allValues)
-  const maxVal = Math.max(...allValues)
+  const minVal = allValues.reduce((a, b) => Math.min(a, b), allValues[0])
+  const maxVal = allValues.reduce((a, b) => Math.max(a, b), allValues[0])
   const range = maxVal - minVal || 1
   const padding = range * 0.1
 

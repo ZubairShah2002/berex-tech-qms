@@ -289,10 +289,16 @@ internal sealed class RecalculateLimitsCommandHandler : ICommandHandler<Recalcul
         if (string.IsNullOrWhiteSpace(raw))
             return [];
 
-        return raw
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(s => decimal.Parse(s, CultureInfo.InvariantCulture))
-            .ToArray();
+        var tokens = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var values = new List<decimal>(tokens.Length);
+
+        foreach (var token in tokens)
+        {
+            if (decimal.TryParse(token, NumberStyles.Number, CultureInfo.InvariantCulture, out var v))
+                values.Add(v);
+        }
+
+        return values.ToArray();
     }
 
     private static decimal SampleStdDev(IReadOnlyCollection<decimal> values, decimal mean)

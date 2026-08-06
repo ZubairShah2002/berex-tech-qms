@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Package,
   BarChart3,
+  Brain,
   Settings,
   ChevronLeft,
   LogOut,
@@ -40,6 +41,7 @@ const navigation: NavEntry[] = [
   { label: 'Training', path: '/training', icon: <GraduationCap size={18} /> },
   { label: 'Product Catalog', path: '/products', icon: <Package size={18} /> },
   { label: 'SPC', path: '/spc', icon: <BarChart3 size={18} /> },
+  { label: 'AI Engine', path: '/ai', icon: <Brain size={18} /> },
   { label: 'Settings', path: '/settings', icon: <Settings size={18} /> },
 ]
 

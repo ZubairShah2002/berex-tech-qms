@@ -7,6 +7,7 @@ using BerexQms.Domain.SupplierQuality.Entities;
 using BerexQms.Domain.Calibration.Entities;
 using BerexQms.Domain.Training.Entities;
 using BerexQms.Domain.Spc.Entities;
+using BerexQms.Domain.AiEngine.Entities;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.ValueObjects;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +76,10 @@ public class QmsDbContext : DbContext, IUnitOfWork
 
     public DbSet<ControlChart> ControlCharts => Set<ControlChart>();
     public DbSet<DataPoint> SpcDataPoints => Set<DataPoint>();
+
+    public DbSet<AiInteraction> AiInteractions => Set<AiInteraction>();
+    public DbSet<AiModel> AiModels => Set<AiModel>();
+    public DbSet<AiCapabilityConfig> AiCapabilityConfigs => Set<AiCapabilityConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

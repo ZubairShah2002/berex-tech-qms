@@ -27,6 +27,8 @@ using BerexQms.Domain.Training.Repositories;
 using BerexQms.Infrastructure.Training.Repositories;
 using BerexQms.Domain.Spc.Repositories;
 using BerexQms.Infrastructure.Spc.Repositories;
+using BerexQms.Domain.AiEngine.Repositories;
+using BerexQms.Infrastructure.AiEngine.Repositories;
 using BerexQms.Infrastructure.Services;
 using BerexQms.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -156,5 +158,9 @@ public static class DependencyInjection
         services.AddScoped<ICompetencyRecordRepository, CompetencyRecordRepository>();
 
         services.AddScoped<IControlChartRepository, ControlChartRepository>();
+
+        services.AddScoped<IAiInteractionRepository, AiInteractionRepository>();
+        services.AddScoped<IAiModelRepository, AiModelRepository>();
+        services.AddScoped<IAiCapabilityConfigRepository, AiCapabilityConfigRepository>();
     }
 }

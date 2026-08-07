@@ -40,6 +40,7 @@ import { SkillMatrixPage } from '@/pages/training/SkillMatrixPage'
 import { SpcListPage } from '@/pages/spc/SpcListPage'
 import { SpcCreatePage } from '@/pages/spc/SpcCreatePage'
 import { SpcDetailPage } from '@/pages/spc/SpcDetailPage'
+import { AiDashboardPage } from '@/pages/ai/AiDashboardPage'
 
 export const router = createBrowserRouter([
   {
@@ -90,6 +91,7 @@ export const router = createBrowserRouter([
           { path: 'spc', element: <SpcListPage /> },
           { path: 'spc/new', element: <SpcCreatePage /> },
           { path: 'spc/:id', element: <SpcDetailPage /> },
+          { path: 'ai', element: <AiDashboardPage /> },
           { path: 'settings', element: <ModulePlaceholder moduleName="Settings" /> },
           { path: '*', element: <NotFoundPage /> },
         ],

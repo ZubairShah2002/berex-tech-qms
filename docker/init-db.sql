@@ -1472,3 +1472,94 @@ CREATE POLICY tenant_isolation_control_charts ON spc.control_charts
 
 CREATE POLICY tenant_isolation_data_points ON spc.data_points
     USING (tenant_id = shared.current_tenant_id());
+
+-- ============================================================================
+-- AI Engine Schema
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS ai_engine.ai_models (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES identity.tenants(id),
+    name VARCHAR(200) NOT NULL,
+    version VARCHAR(100) NOT NULL,
+    capability VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'Training',
+    description VARCHAR(1000),
+    training_metrics TEXT,
+    validation_metrics TEXT,
+    hyper_parameters TEXT,
+    data_snapshot_reference VARCHAR(500),
+    training_sample_count INT,
+    trained_at TIMESTAMPTZ,
+    promoted_at TIMESTAMPTZ,
+    retired_at TIMESTAMPTZ,
+    -- Audit
+    created_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by VARCHAR(100),
+    modified_at TIMESTAMPTZ,
+    CONSTRAINT uq_ai_models_tenant_name_version UNIQUE (tenant_id, name, version)
+);
+
+-- uq_ai_models_tenant_name_version implicitly creates index on (tenant_id, name, version)
+CREATE INDEX IF NOT EXISTS ix_ai_models_tenant_capability ON ai_engine.ai_models(tenant_id, capability);
+CREATE INDEX IF NOT EXISTS ix_ai_models_tenant_status ON ai_engine.ai_models(tenant_id, status);
+
+CREATE TABLE IF NOT EXISTS ai_engine.ai_interactions (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES identity.tenants(id),
+    capability VARCHAR(50) NOT NULL,
+    user_id UUID NOT NULL,
+    model_id VARCHAR(200),
+    input_summary VARCHAR(2000),
+    output_summary TEXT,
+    confidence_score NUMERIC(5,4),
+    confidence_level VARCHAR(50),
+    source_references TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    user_action VARCHAR(50),
+    user_justification VARCHAR(1000),
+    requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    response_time_ms INT,
+    -- Audit
+    created_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by VARCHAR(100),
+    modified_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_ai_interactions_tenant_capability ON ai_engine.ai_interactions(tenant_id, capability);
+CREATE INDEX IF NOT EXISTS ix_ai_interactions_tenant_user ON ai_engine.ai_interactions(tenant_id, user_id);
+CREATE INDEX IF NOT EXISTS ix_ai_interactions_tenant_status ON ai_engine.ai_interactions(tenant_id, status);
+CREATE INDEX IF NOT EXISTS ix_ai_interactions_requested_at ON ai_engine.ai_interactions(tenant_id, requested_at);
+
+CREATE TABLE IF NOT EXISTS ai_engine.ai_capability_configs (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES identity.tenants(id),
+    capability VARCHAR(50) NOT NULL,
+    is_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    low_confidence_threshold NUMERIC(5,4) NOT NULL DEFAULT 0.3000,
+    moderate_confidence_threshold NUMERIC(5,4) NOT NULL DEFAULT 0.6000,
+    high_confidence_threshold NUMERIC(5,4) NOT NULL DEFAULT 0.8500,
+    -- Audit
+    created_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by VARCHAR(100),
+    modified_at TIMESTAMPTZ,
+    CONSTRAINT uq_ai_capability_configs_tenant_capability UNIQUE (tenant_id, capability)
+);
+
+-- AI Engine RLS Policies
+ALTER TABLE ai_engine.ai_models ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_interactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_capability_configs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_ai_models ON ai_engine.ai_models
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_interactions ON ai_engine.ai_interactions
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_capability_configs ON ai_engine.ai_capability_configs
+    USING (tenant_id = shared.current_tenant_id());

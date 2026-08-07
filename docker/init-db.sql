@@ -1551,9 +1551,130 @@ CREATE TABLE IF NOT EXISTS ai_engine.ai_capability_configs (
 );
 
 -- AI Engine RLS Policies
+-- AI Action Logs (Enhanced AI Audit Trail — v2.0)
+CREATE TABLE IF NOT EXISTS ai_engine.ai_action_logs (
+    id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id             UUID NOT NULL,
+    user_id               UUID NOT NULL,
+    user_role             VARCHAR(128) NOT NULL,
+    permission_level      VARCHAR(64) NOT NULL,
+    action_type           VARCHAR(128) NOT NULL,
+    action_category       VARCHAR(64) NOT NULL,
+    prompt                TEXT,
+    reasoning_summary     TEXT,
+    affected_modules      TEXT,
+    affected_records      TEXT,
+    risk_level            VARCHAR(32) NOT NULL,
+    confirmation_status   VARCHAR(32) NOT NULL,
+    requires_confirmation BOOLEAN NOT NULL DEFAULT FALSE,
+    confirmed_at          TIMESTAMPTZ,
+    confirmed_by          VARCHAR(256),
+    execution_result      VARCHAR(64) NOT NULL,
+    error_detail          TEXT,
+    requested_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at          TIMESTAMPTZ,
+    duration_ms           INTEGER,
+    model_version         VARCHAR(128),
+    confidence_score      NUMERIC(5,4),
+    is_rollback_possible  BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by            VARCHAR(256) NOT NULL DEFAULT '',
+    created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by           VARCHAR(256),
+    modified_at           TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_ai_action_logs_tenant_user
+    ON ai_engine.ai_action_logs(tenant_id, user_id);
+CREATE INDEX IF NOT EXISTS ix_ai_action_logs_tenant_action_type
+    ON ai_engine.ai_action_logs(tenant_id, action_type);
+CREATE INDEX IF NOT EXISTS ix_ai_action_logs_requested_at
+    ON ai_engine.ai_action_logs(tenant_id, requested_at DESC);
+CREATE INDEX IF NOT EXISTS ix_ai_action_logs_confirmation
+    ON ai_engine.ai_action_logs(tenant_id, confirmation_status)
+    WHERE confirmation_status = 'Pending';
+
+-- AI Permission Policies (v2.0)
+CREATE TABLE IF NOT EXISTS ai_engine.ai_permission_policies (
+    id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id          UUID NOT NULL,
+    user_id            UUID NOT NULL,
+    permission_level   VARCHAR(64) NOT NULL,
+    is_active          BOOLEAN NOT NULL DEFAULT TRUE,
+    granted_by_user_id VARCHAR(256),
+    granted_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_by_user_id VARCHAR(256),
+    revoked_at         TIMESTAMPTZ,
+    notes              TEXT,
+    created_by         VARCHAR(256) NOT NULL DEFAULT '',
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by        VARCHAR(256),
+    modified_at        TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_ai_permission_policies_active_user
+    ON ai_engine.ai_permission_policies(tenant_id, user_id)
+    WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS ix_ai_permission_policies_tenant_user
+    ON ai_engine.ai_permission_policies(tenant_id, user_id);
+
+-- AI Workflow Definitions (v2.0)
+CREATE TABLE IF NOT EXISTS ai_engine.ai_workflow_definitions (
+    id                       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id                UUID NOT NULL,
+    name                     VARCHAR(256) NOT NULL,
+    description              TEXT,
+    minimum_permission_level VARCHAR(64) NOT NULL,
+    category                 VARCHAR(64) NOT NULL,
+    is_active                BOOLEAN NOT NULL DEFAULT TRUE,
+    steps_definition         JSONB NOT NULL,
+    affected_modules         TEXT NOT NULL,
+    created_by               VARCHAR(256) NOT NULL DEFAULT '',
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by              VARCHAR(256),
+    modified_at              TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_ai_workflow_definitions_tenant_name
+    ON ai_engine.ai_workflow_definitions(tenant_id, name);
+
+-- AI Workflow Executions (v2.0)
+CREATE TABLE IF NOT EXISTS ai_engine.ai_workflow_executions (
+    id                      UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id               UUID NOT NULL,
+    workflow_definition_id  UUID NOT NULL REFERENCES ai_engine.ai_workflow_definitions(id),
+    workflow_name           VARCHAR(256) NOT NULL,
+    user_id                 UUID NOT NULL,
+    status                  VARCHAR(64) NOT NULL,
+    total_steps             INTEGER NOT NULL,
+    completed_steps         INTEGER NOT NULL DEFAULT 0,
+    failed_steps            INTEGER NOT NULL DEFAULT 0,
+    step_results            JSONB,
+    output                  JSONB,
+    started_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    completed_at            TIMESTAMPTZ,
+    total_duration_ms       INTEGER,
+    error_summary           TEXT,
+    created_by              VARCHAR(256) NOT NULL DEFAULT '',
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by             VARCHAR(256),
+    modified_at             TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_ai_workflow_executions_tenant_user
+    ON ai_engine.ai_workflow_executions(tenant_id, user_id);
+CREATE INDEX IF NOT EXISTS ix_ai_workflow_executions_tenant_status
+    ON ai_engine.ai_workflow_executions(tenant_id, status);
+CREATE INDEX IF NOT EXISTS ix_ai_workflow_executions_definition
+    ON ai_engine.ai_workflow_executions(workflow_definition_id);
+
+-- RLS policies
 ALTER TABLE ai_engine.ai_models ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_interactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_capability_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_action_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_permission_policies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_workflow_definitions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_workflow_executions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_ai_models ON ai_engine.ai_models
     USING (tenant_id = shared.current_tenant_id());
@@ -1562,4 +1683,16 @@ CREATE POLICY tenant_isolation_ai_interactions ON ai_engine.ai_interactions
     USING (tenant_id = shared.current_tenant_id());
 
 CREATE POLICY tenant_isolation_ai_capability_configs ON ai_engine.ai_capability_configs
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_action_logs ON ai_engine.ai_action_logs
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_permission_policies ON ai_engine.ai_permission_policies
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_workflow_definitions ON ai_engine.ai_workflow_definitions
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_workflow_executions ON ai_engine.ai_workflow_executions
     USING (tenant_id = shared.current_tenant_id());

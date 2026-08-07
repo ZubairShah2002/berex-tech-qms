@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react'
-import { Brain, Activity, ToggleLeft } from 'lucide-react'
+import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/Badge'
+import { useAuthStore } from '@/stores/auth-store'
 import styles from './AiDashboardPage.module.css'
 
 // ---- Types ------------------------------------------------------------------
@@ -54,9 +55,81 @@ interface PagedResult<T> {
   pageSize: number
 }
 
+interface AiUserPermissionsDto {
+  userId: string
+  permissionLevel: string
+  permissionLevelNumber: number
+  allowedActionTypes: string[]
+  allowedCategories: string[]
+  hasExplicitPolicy: boolean
+}
+
+interface AiActionLogDto {
+  id: string
+  userId: string
+  userRole: string
+  permissionLevel: string
+  actionType: string
+  actionCategory: string
+  prompt: string | null
+  reasoningSummary: string | null
+  affectedModules: string | null
+  affectedRecords: string | null
+  riskLevel: string
+  confirmationStatus: string
+  requiresConfirmation: boolean
+  executionResult: string
+  errorDetail: string | null
+  requestedAt: string
+  completedAt: string | null
+  durationMs: number | null
+  modelVersion: string | null
+  confidenceScore: number | null
+  isRollbackPossible: boolean
+}
+
+interface AiWorkflowDefinitionDto {
+  id: string
+  name: string
+  description: string | null
+  minimumPermissionLevel: string
+  category: string
+  isActive: boolean
+  affectedModules: string
+  createdAt: string
+}
+
+interface AiWorkflowExecutionDto {
+  id: string
+  workflowDefinitionId: string
+  workflowName: string
+  userId: string
+  status: string
+  totalSteps: number
+  completedSteps: number
+  failedSteps: number
+  output: string | null
+  startedAt: string
+  completedAt: string | null
+  totalDurationMs: number | null
+  errorSummary: string | null
+}
+
+interface AiConfirmationRequestDto {
+  actionLogId: string
+  actionType: string
+  actionCategory: string
+  riskLevel: string
+  actionSummary: string
+  affectedRecords: string | null
+  isRollbackPossible: boolean
+  confirmationPrompt: string
+}
+
+
 // ---- Constants --------------------------------------------------------------
 
-type TabId = 'capabilities' | 'interactions' | 'models'
+type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows'
 
 const capabilityLabels: Record<string, string> = {
   DefectPrediction: 'Defect Prediction',
@@ -104,9 +177,65 @@ const modelStatusOptions = [
   { value: 'Retired', label: 'Retired' },
 ]
 
+const permissionLevelLabels: Record<string, string> = {
+  Assistant: 'Level 1 — Assistant',
+  Manager: 'Level 2 — Manager',
+  Administrator: 'Level 3 — Administrator',
+  SuperAdministrator: 'Level 4 — Super Administrator',
+}
+
+const permissionLevelOptions = [
+  { value: 'Assistant', label: 'Level 1 — Assistant' },
+  { value: 'Manager', label: 'Level 2 — Manager' },
+  { value: 'Administrator', label: 'Level 3 — Administrator' },
+  { value: 'SuperAdministrator', label: 'Level 4 — Super Administrator' },
+]
+
+const actionLogResultOptions = [
+  { value: '', label: 'All results' },
+  { value: 'Success', label: 'Success' },
+  { value: 'Failed', label: 'Failed' },
+  { value: 'AwaitingConfirmation', label: 'Awaiting Confirmation' },
+  { value: 'Rejected', label: 'Rejected' },
+  { value: 'Expired', label: 'Expired' },
+]
+
+const actionLogPermLevelOptions = [
+  { value: '', label: 'All levels' },
+  { value: 'Assistant', label: 'Assistant' },
+  { value: 'Manager', label: 'Manager' },
+  { value: 'Administrator', label: 'Administrator' },
+  { value: 'SuperAdministrator', label: 'Super Admin' },
+]
+
+const workflowStatusOptions = [
+  { value: '', label: 'All statuses' },
+  { value: 'PendingConfirmation', label: 'Pending Confirmation' },
+  { value: 'Running', label: 'Running' },
+  { value: 'Completed', label: 'Completed' },
+  { value: 'Failed', label: 'Failed' },
+  { value: 'Cancelled', label: 'Cancelled' },
+]
+
+const riskColors: Record<string, string> = {
+  None: 'var(--color-text-secondary)',
+  Low: 'var(--color-success)',
+  Medium: 'var(--color-warning)',
+  High: 'var(--color-error)',
+  Critical: 'var(--color-error)',
+}
+
+const permissionLevelDescriptions: Record<string, string> = {
+  Assistant: 'Read-only AI access. View predictions, suggestions, and reports.',
+  Manager: 'Generate content and draft workflows. Can request AI-powered analysis.',
+  Administrator: 'Full write access to AI actions. Can execute cross-module operations.',
+  SuperAdministrator: 'Unrestricted access including dangerous operations. JARVIS MODE.',
+}
+
 // ---- Component --------------------------------------------------------------
 
 export function AiDashboardPage() {
+  const user = useAuthStore(s => s.user)
   const [activeTab, setActiveTab] = useState<TabId>('capabilities')
   const [capFilter, setCapFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -114,6 +243,19 @@ export function AiDashboardPage() {
   const [modelStatusFilter, setModelStatusFilter] = useState('')
   const [interactionPage, setInteractionPage] = useState(1)
   const [modelPage, setModelPage] = useState(1)
+
+  // Action log filters
+  const [logResultFilter, setLogResultFilter] = useState('')
+  const [logLevelFilter, setLogLevelFilter] = useState('')
+  const [logPage, setLogPage] = useState(1)
+
+  // Workflow filters
+  const [wfStatusFilter, setWfStatusFilter] = useState('')
+  const [wfPage, setWfPage] = useState(1)
+
+  // Confirmation dialog
+  const [confirmationRequest, setConfirmationRequest] = useState<AiConfirmationRequestDto | null>(null)
+
   const pageSize = 20
   const queryClient = useQueryClient()
 
@@ -150,12 +292,70 @@ export function AiDashboardPage() {
     enabled: activeTab === 'models',
   })
 
+  const myPermissionsQuery = useQuery({
+    queryKey: ['ai', 'permissions', user?.id],
+    queryFn: () => apiClient.get<AiUserPermissionsDto>(`/api/v1/ai/permissions/${user!.id}`).then(r => r.data),
+    enabled: activeTab === 'permissions' && !!user?.id,
+  })
+
+  const actionLogsQuery = useQuery({
+    queryKey: ['ai', 'actionLogs', logResultFilter, logLevelFilter, logPage],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      params.set('page', String(logPage))
+      params.set('pageSize', String(pageSize))
+      if (logResultFilter) params.set('executionResult', logResultFilter)
+      if (logLevelFilter) params.set('permissionLevel', logLevelFilter)
+      return apiClient.get<PagedResult<AiActionLogDto>>(`/api/v1/ai/actions/logs?${params}`).then(r => r.data)
+    },
+    enabled: activeTab === 'actionLog',
+  })
+
+  const workflowDefinitionsQuery = useQuery({
+    queryKey: ['ai', 'workflowDefinitions'],
+    queryFn: () => apiClient.get<AiWorkflowDefinitionDto[]>('/api/v1/ai/workflows/definitions').then(r => r.data),
+    enabled: activeTab === 'workflows',
+  })
+
+  const workflowExecutionsQuery = useQuery({
+    queryKey: ['ai', 'workflowExecutions', wfStatusFilter, wfPage],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      params.set('page', String(wfPage))
+      params.set('pageSize', String(pageSize))
+      if (wfStatusFilter) params.set('status', wfStatusFilter)
+      return apiClient.get<PagedResult<AiWorkflowExecutionDto>>(`/api/v1/ai/workflows/executions?${params}`).then(r => r.data)
+    },
+    enabled: activeTab === 'workflows',
+  })
+
   // ---- Mutations ----
 
   const toggleMutation = useMutation({
     mutationFn: (data: { capability: string; enable: boolean }) =>
       apiClient.post('/api/v1/ai/capabilities/toggle', data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai', 'configs'] }),
+  })
+
+  const executeWorkflowMutation = useMutation({
+    mutationFn: (workflowDefinitionId: string) =>
+      apiClient.post<AiWorkflowExecutionDto>('/api/v1/ai/workflows/execute', { workflowDefinitionId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai', 'workflowExecutions'] }),
+  })
+
+  const confirmWorkflowMutation = useMutation({
+    mutationFn: (data: { executionId: string; confirm: boolean }) =>
+      apiClient.post<AiWorkflowExecutionDto>(`/api/v1/ai/workflows/executions/${data.executionId}/confirm`, { confirm: data.confirm }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai', 'workflowExecutions'] }),
+  })
+
+  const confirmActionMutation = useMutation({
+    mutationFn: (data: { actionLogId: string; confirm: boolean }) =>
+      apiClient.post<AiActionLogDto>(`/api/v1/ai/actions/${data.actionLogId}/confirm`, { confirm: data.confirm }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai', 'actionLogs'] })
+      setConfirmationRequest(null)
+    },
   })
 
   const handleToggle = useCallback((capability: string, currentEnabled: boolean) => {
@@ -368,6 +568,367 @@ export function AiDashboardPage() {
     )
   }
 
+  // ---- Permissions tab ----
+
+  function renderPermissions() {
+    if (myPermissionsQuery.isLoading) return <div className={styles.loadingSkeleton} />
+    if (myPermissionsQuery.isError) return <div className={styles.errorBanner}>Failed to load AI permissions.</div>
+
+    const perms = myPermissionsQuery.data
+
+    return (
+      <div className={styles.section}>
+        <h3 className={styles.sectionTitle}>AI Permission Summary</h3>
+        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+          Your current AI permission level and authorized actions within this tenant.
+        </p>
+
+        {perms && (
+          <>
+            {/* Current Level Card */}
+            <div className={styles.permissionLevelCard}>
+              <div className={styles.permissionLevelHeader}>
+                <Shield size={20} />
+                <span className={styles.permissionLevelTitle}>
+                  {permissionLevelLabels[perms.permissionLevel] ?? perms.permissionLevel}
+                </span>
+                {!perms.hasExplicitPolicy && (
+                  <span className={styles.defaultBadge}>Default</span>
+                )}
+              </div>
+              <p className={styles.permissionLevelDesc}>
+                {permissionLevelDescriptions[perms.permissionLevel] ?? ''}
+              </p>
+            </div>
+
+            {/* Permission Level Reference */}
+            <div className={styles.permissionLevelsGrid}>
+              {permissionLevelOptions.map(opt => {
+                const isActive = opt.value === perms.permissionLevel
+                return (
+                  <div
+                    key={opt.value}
+                    className={`${styles.permissionTierCard} ${isActive ? styles.permissionTierActive : ''}`}
+                  >
+                    <div className={styles.permissionTierHeader}>
+                      <span className={styles.permissionTierName}>{opt.label}</span>
+                      {isActive && <StatusBadge status="Active" />}
+                    </div>
+                    <p className={styles.capabilityDescription}>
+                      {permissionLevelDescriptions[opt.value]}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Authorized Categories */}
+            <div style={{ marginTop: 'var(--spacing-4)' }}>
+              <h4 className={styles.subsectionTitle}>Authorized Action Categories</h4>
+              <div className={styles.tagList}>
+                {perms.allowedCategories.map(cat => (
+                  <span key={cat} className={styles.tag}>{cat}</span>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // ---- Action Log tab ----
+
+  function renderActionLog() {
+    if (actionLogsQuery.isLoading) return <div className={styles.loadingSkeleton} />
+    if (actionLogsQuery.isError) return <div className={styles.errorBanner}>Failed to load AI action logs.</div>
+
+    const data = actionLogsQuery.data
+    const items = data?.items ?? []
+
+    const columns = [
+      { key: 'actionType', header: 'Action', render: (row: AiActionLogDto) => (
+        <span className={styles.actionTypeLabel}>{row.actionType.replace(/([A-Z])/g, ' $1').trim()}</span>
+      )},
+      { key: 'actionCategory', header: 'Category', render: (row: AiActionLogDto) => (
+        <span className={styles.tag}>{row.actionCategory}</span>
+      )},
+      { key: 'permissionLevel', header: 'Level', render: (row: AiActionLogDto) => row.permissionLevel },
+      { key: 'riskLevel', header: 'Risk', render: (row: AiActionLogDto) => (
+        <span style={{ color: riskColors[row.riskLevel] ?? 'inherit', fontWeight: 500 }}>{row.riskLevel}</span>
+      )},
+      { key: 'confirmationStatus', header: 'Confirmation', render: (row: AiActionLogDto) => (
+        <StatusBadge status={row.confirmationStatus} />
+      )},
+      { key: 'executionResult', header: 'Result', render: (row: AiActionLogDto) => (
+        <StatusBadge status={row.executionResult} />
+      )},
+      { key: 'durationMs', header: 'Duration', render: (row: AiActionLogDto) => row.durationMs !== null ? `${row.durationMs}ms` : '—' },
+      { key: 'requestedAt', header: 'Requested', render: (row: AiActionLogDto) => formatDate(row.requestedAt) },
+    ]
+
+    return (
+      <div className={styles.section}>
+        <h3 className={styles.sectionTitle}>AI Action Audit Log</h3>
+        <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+          Immutable record of every AI-initiated action, including confirmation status and execution outcome.
+        </p>
+        <div className={styles.filters}>
+          <div className={styles.filterSelect}>
+            <Select
+              label=""
+              value={logResultFilter}
+              onChange={(e) => { setLogResultFilter(e.target.value); setLogPage(1) }}
+              options={actionLogResultOptions}
+            />
+          </div>
+          <div className={styles.filterSelect}>
+            <Select
+              label=""
+              value={logLevelFilter}
+              onChange={(e) => { setLogLevelFilter(e.target.value); setLogPage(1) }}
+              options={actionLogPermLevelOptions}
+            />
+          </div>
+        </div>
+        {items.length === 0 ? (
+          <div className={styles.emptyState}>
+            <ClipboardList size={48} className={styles.emptyIcon} />
+            <p>No AI actions recorded yet.</p>
+          </div>
+        ) : (
+          <DataTable
+            data={items as unknown as Record<string, unknown>[]}
+            columns={columns as never}
+            keyExtractor={(row) => (row as unknown as AiActionLogDto).id}
+            page={data?.page ?? 1}
+            totalCount={data?.totalCount ?? 0}
+            pageSize={pageSize}
+            onPageChange={setLogPage}
+          />
+        )}
+      </div>
+    )
+  }
+
+  // ---- Workflows tab ----
+
+  function renderWorkflows() {
+    const defsLoading = workflowDefinitionsQuery.isLoading
+    const execsLoading = workflowExecutionsQuery.isLoading
+    if (defsLoading && execsLoading) return <div className={styles.loadingSkeleton} />
+
+    const definitions = workflowDefinitionsQuery.data ?? []
+    const executionsData = workflowExecutionsQuery.data
+    const executions = executionsData?.items ?? []
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+        {/* Workflow Definitions */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Workflow Templates</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Pre-defined multi-step AI workflows. All executions require explicit confirmation before proceeding.
+          </p>
+          {definitions.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Workflow size={48} className={styles.emptyIcon} />
+              <p>No workflow templates defined yet.</p>
+            </div>
+          ) : (
+            <div className={styles.modelGrid}>
+              {definitions.map(def => (
+                <div key={def.id} className={styles.workflowCard}>
+                  <div className={styles.workflowCardHeader}>
+                    <h4 className={styles.modelName}>{def.name}</h4>
+                    <StatusBadge status={def.isActive ? 'Active' : 'Inactive'} />
+                  </div>
+                  {def.description && (
+                    <p className={styles.capabilityDescription}>{def.description}</p>
+                  )}
+                  <div className={styles.workflowMeta}>
+                    <span>Min Level: {permissionLevelLabels[def.minimumPermissionLevel] ?? def.minimumPermissionLevel}</span>
+                  </div>
+                  <div className={styles.workflowMeta}>
+                    <span>Modules: {def.affectedModules}</span>
+                  </div>
+                  <div className={styles.workflowMeta}>
+                    <span>Category: {def.category}</span>
+                  </div>
+                  {def.isActive && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={executeWorkflowMutation.isPending}
+                      onClick={() => executeWorkflowMutation.mutate(def.id)}
+                      style={{ marginTop: 'var(--spacing-2)' }}
+                    >
+                      Execute Workflow
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Workflow Executions */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Workflow Executions</h3>
+          <div className={styles.filters}>
+            <div className={styles.filterSelect}>
+              <Select
+                label=""
+                value={wfStatusFilter}
+                onChange={(e) => { setWfStatusFilter(e.target.value); setWfPage(1) }}
+                options={workflowStatusOptions}
+              />
+            </div>
+          </div>
+          {executions.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Workflow size={48} className={styles.emptyIcon} />
+              <p>No workflow executions recorded yet.</p>
+            </div>
+          ) : (
+            <div className={styles.executionsList}>
+              {executions.map(exec => (
+                <div key={exec.id} className={styles.executionCard}>
+                  <div className={styles.executionHeader}>
+                    <h4 className={styles.modelName}>{exec.workflowName}</h4>
+                    <StatusBadge status={exec.status} />
+                  </div>
+                  <div className={styles.executionProgress}>
+                    <div className={styles.progressBar}>
+                      <div
+                        className={styles.progressFill}
+                        style={{ width: exec.totalSteps > 0 ? `${(exec.completedSteps / exec.totalSteps) * 100}%` : '0%' }}
+                      />
+                    </div>
+                    <span className={styles.progressLabel}>
+                      {exec.completedSteps}/{exec.totalSteps} steps
+                      {exec.failedSteps > 0 && ` (${exec.failedSteps} failed)`}
+                    </span>
+                  </div>
+                  <div className={styles.workflowMeta}>
+                    <span>Started: {formatDate(exec.startedAt)}</span>
+                    {exec.completedAt && <span>Completed: {formatDate(exec.completedAt)}</span>}
+                    {exec.totalDurationMs !== null && <span>{exec.totalDurationMs}ms</span>}
+                  </div>
+                  {exec.errorSummary && (
+                    <div className={styles.errorBanner}>{exec.errorSummary}</div>
+                  )}
+                  {exec.status === 'PendingConfirmation' && (
+                    <div className={styles.executionActions}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={confirmWorkflowMutation.isPending}
+                        onClick={() => confirmWorkflowMutation.mutate({ executionId: exec.id, confirm: true })}
+                      >
+                        Confirm &amp; Execute
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={confirmWorkflowMutation.isPending}
+                        onClick={() => confirmWorkflowMutation.mutate({ executionId: exec.id, confirm: false })}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {(executionsData?.totalCount ?? 0) > pageSize && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--spacing-2)', marginTop: 'var(--spacing-4)' }}>
+              <Button variant="secondary" size="sm" disabled={wfPage <= 1} onClick={() => setWfPage(p => p - 1)}>Previous</Button>
+              <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', padding: 'var(--spacing-2)' }}>
+                Page {wfPage} of {Math.ceil((executionsData?.totalCount ?? 0) / pageSize)}
+              </span>
+              <Button variant="secondary" size="sm" disabled={wfPage >= Math.ceil((executionsData?.totalCount ?? 0) / pageSize)} onClick={() => setWfPage(p => p + 1)}>Next</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ---- Confirmation Dialog ----
+
+  function renderConfirmationDialog() {
+    if (!confirmationRequest) return null
+
+    return (
+      <div className={styles.overlay} onClick={() => setConfirmationRequest(null)} role="dialog" aria-modal="true" aria-label="Confirm AI Action">
+        <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.confirmHeader}>
+            <AlertTriangle size={20} style={{ color: riskColors[confirmationRequest.riskLevel] ?? 'var(--color-warning)' }} />
+            <span className={styles.confirmTitle}>AI Action Confirmation Required</span>
+          </div>
+
+          <div className={styles.confirmBody}>
+            <div className={styles.confirmField}>
+              <span className={styles.confirmFieldLabel}>Action</span>
+              <span>{confirmationRequest.actionType.replace(/([A-Z])/g, ' $1').trim()}</span>
+            </div>
+            <div className={styles.confirmField}>
+              <span className={styles.confirmFieldLabel}>Category</span>
+              <span className={styles.tag}>{confirmationRequest.actionCategory}</span>
+            </div>
+            <div className={styles.confirmField}>
+              <span className={styles.confirmFieldLabel}>Risk Level</span>
+              <span style={{ color: riskColors[confirmationRequest.riskLevel], fontWeight: 600 }}>
+                {confirmationRequest.riskLevel}
+              </span>
+            </div>
+            {confirmationRequest.affectedRecords && (
+              <div className={styles.confirmField}>
+                <span className={styles.confirmFieldLabel}>Affected Records</span>
+                <span>{confirmationRequest.affectedRecords}</span>
+              </div>
+            )}
+            <div className={styles.confirmField}>
+              <span className={styles.confirmFieldLabel}>Rollback</span>
+              <span>{confirmationRequest.isRollbackPossible ? 'Possible' : 'Not possible — this action cannot be undone'}</span>
+            </div>
+          </div>
+
+          <div className={styles.confirmSummary}>
+            {confirmationRequest.actionSummary}
+          </div>
+
+          <div className={styles.confirmPrompt}>
+            {confirmationRequest.confirmationPrompt}
+          </div>
+
+          <div className={styles.confirmActions}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                confirmActionMutation.mutate({ actionLogId: confirmationRequest.actionLogId, confirm: false })
+              }}
+              disabled={confirmActionMutation.isPending}
+            >
+              Reject
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                confirmActionMutation.mutate({ actionLogId: confirmationRequest.actionLogId, confirm: true })
+              }}
+              disabled={confirmActionMutation.isPending}
+            >
+              Confirm Execution
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ---- Main render ----
 
   return (
@@ -392,11 +953,28 @@ export function AiDashboardPage() {
           <Brain size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
           Models
         </button>
+        <button className={`${styles.tab} ${activeTab === 'permissions' ? styles.tabActive : ''}`} onClick={() => setActiveTab('permissions')}>
+          <Shield size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          Permissions
+        </button>
+        <button className={`${styles.tab} ${activeTab === 'actionLog' ? styles.tabActive : ''}`} onClick={() => setActiveTab('actionLog')}>
+          <ClipboardList size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          Action Log
+        </button>
+        <button className={`${styles.tab} ${activeTab === 'workflows' ? styles.tabActive : ''}`} onClick={() => setActiveTab('workflows')}>
+          <Workflow size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          Workflows
+        </button>
       </div>
 
       {activeTab === 'capabilities' && renderCapabilities()}
       {activeTab === 'interactions' && renderInteractions()}
       {activeTab === 'models' && renderModels()}
+      {activeTab === 'permissions' && renderPermissions()}
+      {activeTab === 'actionLog' && renderActionLog()}
+      {activeTab === 'workflows' && renderWorkflows()}
+
+      {renderConfirmationDialog()}
     </div>
   )
 }

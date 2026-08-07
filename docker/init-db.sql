@@ -1667,6 +1667,57 @@ CREATE INDEX IF NOT EXISTS ix_ai_workflow_executions_tenant_status
 CREATE INDEX IF NOT EXISTS ix_ai_workflow_executions_definition
     ON ai_engine.ai_workflow_executions(workflow_definition_id);
 
+-- Sprint 14: AI Context Engine tables
+
+CREATE TABLE IF NOT EXISTS ai_engine.ai_context_documents (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    source_module       VARCHAR(100) NOT NULL,
+    source_entity_id    VARCHAR(200),
+    context_type        VARCHAR(50) NOT NULL,
+    title               VARCHAR(500) NOT NULL,
+    content             TEXT NOT NULL,
+    metadata_json       TEXT,
+    embedding_status    VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    indexed_at          TIMESTAMPTZ,
+    index_error         VARCHAR(2000),
+    content_version     INT NOT NULL DEFAULT 1,
+    created_by          VARCHAR(100) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by         VARCHAR(100),
+    modified_at         TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_ai_context_documents_tenant_module
+    ON ai_engine.ai_context_documents(tenant_id, source_module);
+CREATE INDEX IF NOT EXISTS ix_ai_context_documents_tenant_context_type
+    ON ai_engine.ai_context_documents(tenant_id, context_type);
+CREATE INDEX IF NOT EXISTS ix_ai_context_documents_tenant_status
+    ON ai_engine.ai_context_documents(tenant_id, embedding_status);
+CREATE UNIQUE INDEX IF NOT EXISTS ix_ai_context_documents_tenant_source_entity
+    ON ai_engine.ai_context_documents(tenant_id, source_module, source_entity_id)
+    WHERE source_entity_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS ai_engine.ai_knowledge_sources (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    name                VARCHAR(200) NOT NULL,
+    module              VARCHAR(100) NOT NULL,
+    description         VARCHAR(1000),
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    last_synced_at      TIMESTAMPTZ,
+    document_count      INT NOT NULL DEFAULT 0,
+    created_by          VARCHAR(100) NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by         VARCHAR(100),
+    modified_at         TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ix_ai_knowledge_sources_tenant_module
+    ON ai_engine.ai_knowledge_sources(tenant_id, module);
+CREATE INDEX IF NOT EXISTS ix_ai_knowledge_sources_tenant_active
+    ON ai_engine.ai_knowledge_sources(tenant_id, is_active);
+
 -- RLS policies
 ALTER TABLE ai_engine.ai_models ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_interactions ENABLE ROW LEVEL SECURITY;
@@ -1675,6 +1726,8 @@ ALTER TABLE ai_engine.ai_action_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_permission_policies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_workflow_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_workflow_executions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_context_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_knowledge_sources ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_ai_models ON ai_engine.ai_models
     USING (tenant_id = shared.current_tenant_id());
@@ -1695,4 +1748,10 @@ CREATE POLICY tenant_isolation_ai_workflow_definitions ON ai_engine.ai_workflow_
     USING (tenant_id = shared.current_tenant_id());
 
 CREATE POLICY tenant_isolation_ai_workflow_executions ON ai_engine.ai_workflow_executions
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_context_documents ON ai_engine.ai_context_documents
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_knowledge_sources ON ai_engine.ai_knowledge_sources
     USING (tenant_id = shared.current_tenant_id());

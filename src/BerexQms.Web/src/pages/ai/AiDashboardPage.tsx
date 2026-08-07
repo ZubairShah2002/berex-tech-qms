@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react'
-import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle } from 'lucide-react'
+import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle, Database, Search } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/Badge'
 import { useAuthStore } from '@/stores/auth-store'
@@ -126,10 +127,42 @@ interface AiConfirmationRequestDto {
   confirmationPrompt: string
 }
 
+interface ContextStatsDto {
+  totalDocuments: number
+  indexedDocuments: number
+  pendingDocuments: number
+  failedDocuments: number
+  staleDocuments: number
+  activeSources: number
+  totalSources: number
+  lastSyncedAt: string | null
+}
+
+interface ContextSearchResultDto {
+  documentId: string
+  sourceModule: string
+  contextType: string
+  title: string
+  contentSnippet: string
+  relevanceScore: number
+  indexedAt: string | null
+}
+
+interface KnowledgeSourceDto {
+  id: string
+  name: string
+  module: string
+  description: string | null
+  isActive: boolean
+  lastSyncedAt: string | null
+  documentCount: number
+  createdAt: string
+}
+
 
 // ---- Constants --------------------------------------------------------------
 
-type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows'
+type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows' | 'knowledgeContext'
 
 const capabilityLabels: Record<string, string> = {
   DefectPrediction: 'Defect Prediction',
@@ -217,6 +250,20 @@ const workflowStatusOptions = [
   { value: 'Cancelled', label: 'Cancelled' },
 ]
 
+const contextModuleOptions = [
+  { value: '', label: 'All modules' },
+  { value: 'ProductCatalog', label: 'Product Catalog' },
+  { value: 'Inspection', label: 'Inspection' },
+  { value: 'NonConformance', label: 'Non-Conformance' },
+  { value: 'Capa', label: 'CAPA' },
+  { value: 'DocumentControl', label: 'Document Control' },
+  { value: 'AuditManagement', label: 'Audit Management' },
+  { value: 'SupplierQuality', label: 'Supplier Quality' },
+  { value: 'Calibration', label: 'Calibration' },
+  { value: 'Training', label: 'Training' },
+  { value: 'Spc', label: 'SPC' },
+]
+
 const riskColors: Record<string, string> = {
   None: 'var(--color-text-secondary)',
   Low: 'var(--color-success)',
@@ -252,6 +299,11 @@ export function AiDashboardPage() {
   // Workflow filters
   const [wfStatusFilter, setWfStatusFilter] = useState('')
   const [wfPage, setWfPage] = useState(1)
+
+  // Knowledge context
+  const [contextSearchTerm, setContextSearchTerm] = useState('')
+  const [contextModuleFilter, setContextModuleFilter] = useState('')
+  const [searchSubmitted, setSearchSubmitted] = useState('')
 
   // Confirmation dialog
   const [confirmationRequest, setConfirmationRequest] = useState<AiConfirmationRequestDto | null>(null)
@@ -327,6 +379,30 @@ export function AiDashboardPage() {
       return apiClient.get<PagedResult<AiWorkflowExecutionDto>>(`/api/v1/ai/workflows/executions?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'workflows',
+  })
+
+  const contextStatsQuery = useQuery({
+    queryKey: ['ai', 'contextStats'],
+    queryFn: () => apiClient.get<ContextStatsDto>('/api/v1/ai/context/stats').then(r => r.data),
+    enabled: activeTab === 'knowledgeContext',
+  })
+
+  const knowledgeSourcesQuery = useQuery({
+    queryKey: ['ai', 'knowledgeSources'],
+    queryFn: () => apiClient.get<KnowledgeSourceDto[]>('/api/v1/ai/knowledge-sources').then(r => r.data),
+    enabled: activeTab === 'knowledgeContext',
+  })
+
+  const contextSearchQuery = useQuery({
+    queryKey: ['ai', 'contextSearch', searchSubmitted, contextModuleFilter],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      params.set('searchTerm', searchSubmitted)
+      if (contextModuleFilter) params.set('sourceModule', contextModuleFilter)
+      params.set('maxResults', '20')
+      return apiClient.get<ContextSearchResultDto[]>(`/api/v1/ai/context/search?${params}`).then(r => r.data)
+    },
+    enabled: activeTab === 'knowledgeContext' && searchSubmitted.length >= 2,
   })
 
   // ---- Mutations ----
@@ -856,6 +932,171 @@ export function AiDashboardPage() {
     )
   }
 
+  // ---- Knowledge Context tab ----
+
+  function handleContextSearch() {
+    if (contextSearchTerm.trim().length >= 2) {
+      setSearchSubmitted(contextSearchTerm.trim())
+    }
+  }
+
+  function renderKnowledgeContext() {
+    const statsLoading = contextStatsQuery.isLoading
+    const sourcesLoading = knowledgeSourcesQuery.isLoading
+
+    const stats = contextStatsQuery.data
+    const sources = knowledgeSourcesQuery.data ?? []
+    const searchResults = contextSearchQuery.data ?? []
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+        {/* Context Statistics */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Knowledge Context Overview</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Structured knowledge foundation for AI-powered quality analysis and recommendations.
+          </p>
+          {statsLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 100 }} />
+          ) : stats ? (
+            <div className={styles.contextStatsGrid}>
+              <div className={styles.contextStatCard}>
+                <p className={styles.contextStatValue}>{stats.totalDocuments}</p>
+                <p className={styles.contextStatLabel}>Total Documents</p>
+              </div>
+              <div className={`${styles.contextStatCard} ${stats.indexedDocuments > 0 ? styles.contextStatSuccess : ''}`}>
+                <p className={styles.contextStatValue}>{stats.indexedDocuments}</p>
+                <p className={styles.contextStatLabel}>Indexed</p>
+              </div>
+              <div className={`${styles.contextStatCard} ${stats.pendingDocuments > 0 ? styles.contextStatWarning : ''}`}>
+                <p className={styles.contextStatValue}>{stats.pendingDocuments}</p>
+                <p className={styles.contextStatLabel}>Pending</p>
+              </div>
+              <div className={`${styles.contextStatCard} ${stats.failedDocuments > 0 ? styles.contextStatError : ''}`}>
+                <p className={styles.contextStatValue}>{stats.failedDocuments}</p>
+                <p className={styles.contextStatLabel}>Failed</p>
+              </div>
+              <div className={`${styles.contextStatCard} ${stats.staleDocuments > 0 ? styles.contextStatWarning : ''}`}>
+                <p className={styles.contextStatValue}>{stats.staleDocuments}</p>
+                <p className={styles.contextStatLabel}>Stale</p>
+              </div>
+              <div className={styles.contextStatCard}>
+                <p className={styles.contextStatValue}>{stats.activeSources}/{stats.totalSources}</p>
+                <p className={styles.contextStatLabel}>Active Sources</p>
+              </div>
+            </div>
+          ) : null}
+          {stats?.lastSyncedAt && (
+            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Last synced: {formatDate(stats.lastSyncedAt)}
+            </p>
+          )}
+        </div>
+
+        {/* Context Search */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Context Search</h3>
+          <div className={styles.searchRow}>
+            <div className={styles.searchField}>
+              <Input
+                placeholder="Search knowledge context..."
+                value={contextSearchTerm}
+                onChange={(e) => setContextSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleContextSearch()}
+              />
+            </div>
+            <div className={styles.filterSelect}>
+              <Select
+                label=""
+                value={contextModuleFilter}
+                onChange={(e) => setContextModuleFilter(e.target.value)}
+                options={contextModuleOptions}
+              />
+            </div>
+            <Button
+              variant="primary"
+              onClick={handleContextSearch}
+              disabled={contextSearchTerm.trim().length < 2}
+            >
+              <Search size={14} style={{ marginRight: 4 }} />
+              Search
+            </Button>
+          </div>
+
+          {contextSearchQuery.isLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 200 }} />
+          ) : searchSubmitted && searchResults.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Search size={48} className={styles.emptyIcon} />
+              <p>No matching context documents found.</p>
+            </div>
+          ) : searchResults.length > 0 ? (
+            <div className={styles.searchResultsList}>
+              {searchResults.map(result => (
+                <div key={result.documentId} className={styles.searchResultCard}>
+                  <div className={styles.searchResultHeader}>
+                    <h4 className={styles.searchResultTitle}>{result.title}</h4>
+                    <div className={styles.relevanceBar}>
+                      <div className={styles.relevanceTrack}>
+                        <div className={styles.relevanceFill} style={{ width: `${result.relevanceScore * 100}%` }} />
+                      </div>
+                      <span className={styles.relevanceLabel}>{(result.relevanceScore * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                  <p className={styles.searchResultSnippet}>{result.contentSnippet}</p>
+                  <div className={styles.searchResultMeta}>
+                    <span className={styles.tag}>{result.sourceModule}</span>
+                    <span className={styles.tag}>{result.contextType}</span>
+                    {result.indexedAt && <span>Indexed: {formatDate(result.indexedAt)}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : !searchSubmitted ? (
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Enter a search term to find relevant context documents across the QMS knowledge foundation.
+            </p>
+          ) : null}
+        </div>
+
+        {/* Knowledge Sources */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Knowledge Sources</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Registered QMS modules that contribute structured context to the AI knowledge foundation.
+          </p>
+          {sourcesLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 200 }} />
+          ) : sources.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Database size={48} className={styles.emptyIcon} />
+              <p>No knowledge sources registered yet.</p>
+            </div>
+          ) : (
+            <div className={styles.sourcesList}>
+              {sources.map(source => (
+                <div key={source.id} className={styles.sourceCard}>
+                  <div className={styles.sourceHeader}>
+                    <h4 className={styles.sourceName}>{source.name}</h4>
+                    <StatusBadge status={source.isActive ? 'Active' : 'Inactive'} />
+                  </div>
+                  {source.description && (
+                    <p className={styles.capabilityDescription}>{source.description}</p>
+                  )}
+                  <div className={styles.sourceMeta}>
+                    <span className={styles.tag}>{source.module}</span>
+                    <span>{source.documentCount} document{source.documentCount !== 1 ? 's' : ''}</span>
+                    {source.lastSyncedAt && <span>Synced: {formatDate(source.lastSyncedAt)}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // ---- Confirmation Dialog ----
 
   function renderConfirmationDialog() {
@@ -965,6 +1206,10 @@ export function AiDashboardPage() {
           <Workflow size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
           Workflows
         </button>
+        <button className={`${styles.tab} ${activeTab === 'knowledgeContext' ? styles.tabActive : ''}`} onClick={() => setActiveTab('knowledgeContext')}>
+          <Database size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          Knowledge Context
+        </button>
       </div>
 
       {activeTab === 'capabilities' && renderCapabilities()}
@@ -973,6 +1218,7 @@ export function AiDashboardPage() {
       {activeTab === 'permissions' && renderPermissions()}
       {activeTab === 'actionLog' && renderActionLog()}
       {activeTab === 'workflows' && renderWorkflows()}
+      {activeTab === 'knowledgeContext' && renderKnowledgeContext()}
 
       {renderConfirmationDialog()}
     </div>

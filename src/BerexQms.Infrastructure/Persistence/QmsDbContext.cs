@@ -84,6 +84,8 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<AiPermissionPolicy> AiPermissionPolicies => Set<AiPermissionPolicy>();
     public DbSet<AiWorkflowDefinition> AiWorkflowDefinitions => Set<AiWorkflowDefinition>();
     public DbSet<AiWorkflowExecution> AiWorkflowExecutions => Set<AiWorkflowExecution>();
+    public DbSet<AiContextDocument> AiContextDocuments => Set<AiContextDocument>();
+    public DbSet<AiKnowledgeSource> AiKnowledgeSources => Set<AiKnowledgeSource>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

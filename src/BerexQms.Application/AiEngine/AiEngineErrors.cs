@@ -71,4 +71,23 @@ public static class AiEngineErrors
 
     public static readonly Error WorkflowExecutionNotFound = Error.NotFound(
         "AiEngine.WorkflowExecutionNotFound", "AI workflow execution not found.");
+
+    // ---- Sprint 14: AI Context Engine Errors ----
+
+    public static readonly Error ContextDocumentNotFound = Error.NotFound(
+        "AiEngine.ContextDocumentNotFound", "AI context document not found.");
+
+    public static readonly Error InvalidContextType = Error.Validation(
+        "AiEngine.InvalidContextType", "The specified context type is not recognized.");
+
+    public static readonly Error KnowledgeSourceNotFound = Error.NotFound(
+        "AiEngine.KnowledgeSourceNotFound", "AI knowledge source not found.");
+
+    public static readonly Error KnowledgeSourceModuleExists = Error.Conflict(
+        "AiEngine.KnowledgeSourceModuleExists",
+        "A knowledge source for this module already exists.");
+
+    public static readonly Error ContextDocumentAlreadyExists = Error.Conflict(
+        "AiEngine.ContextDocumentAlreadyExists",
+        "A context document for this source entity already exists.");
 }

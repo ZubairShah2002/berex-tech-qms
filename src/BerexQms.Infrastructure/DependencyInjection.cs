@@ -175,5 +175,8 @@ public static class DependencyInjection
         services.AddScoped<IAiKnowledgeSourceRepository, AiKnowledgeSourceRepository>();
         services.AddScoped<IAiContextService, AiContextService>();
         services.AddScoped<IEmbeddingService, EmbeddingService>();
+
+        services.AddScoped<IAiRecommendationRepository, AiRecommendationRepository>();
+        services.AddScoped<IAiRecommendationService, AiRecommendationService>();
     }
 }

@@ -86,6 +86,7 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<AiWorkflowExecution> AiWorkflowExecutions => Set<AiWorkflowExecution>();
     public DbSet<AiContextDocument> AiContextDocuments => Set<AiContextDocument>();
     public DbSet<AiKnowledgeSource> AiKnowledgeSources => Set<AiKnowledgeSource>();
+    public DbSet<AiRecommendation> AiRecommendations => Set<AiRecommendation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

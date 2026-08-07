@@ -170,5 +170,10 @@ public static class DependencyInjection
         services.AddScoped<IAiWorkflowDefinitionRepository, AiWorkflowDefinitionRepository>();
         services.AddScoped<IAiWorkflowExecutionRepository, AiWorkflowExecutionRepository>();
         services.AddScoped<IAiPermissionService, AiPermissionService>();
+
+        services.AddScoped<IAiContextDocumentRepository, AiContextDocumentRepository>();
+        services.AddScoped<IAiKnowledgeSourceRepository, AiKnowledgeSourceRepository>();
+        services.AddScoped<IAiContextService, AiContextService>();
+        services.AddScoped<IEmbeddingService, EmbeddingService>();
     }
 }

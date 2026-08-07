@@ -2,8 +2,10 @@ using Asp.Versioning;
 using BerexQms.Application.AiEngine.Commands.AssignAiPermissionLevel;
 using BerexQms.Application.AiEngine.Commands.ConfirmAiAction;
 using BerexQms.Application.AiEngine.Commands.ConfirmWorkflow;
+using BerexQms.Application.AiEngine.Commands.CreateContextDocument;
 using BerexQms.Application.AiEngine.Commands.ExecuteAiAction;
 using BerexQms.Application.AiEngine.Commands.ExecuteWorkflow;
+using BerexQms.Application.AiEngine.Commands.IndexContextDocument;
 using BerexQms.Application.AiEngine.Commands.RecordUserAction;
 using BerexQms.Application.AiEngine.Commands.RegisterModel;
 using BerexQms.Application.AiEngine.Commands.RequestPrediction;
@@ -11,16 +13,21 @@ using BerexQms.Application.AiEngine.Commands.RevokeAiPermission;
 using BerexQms.Application.AiEngine.Commands.ToggleCapability;
 using BerexQms.Application.AiEngine.Commands.TransitionModelStatus;
 using BerexQms.Application.AiEngine.Commands.UpdateCapabilityThresholds;
+using BerexQms.Application.AiEngine.Commands.UpdateContextDocument;
+using BerexQms.Application.AiEngine.Queries.GetAiContext;
 using BerexQms.Application.AiEngine.Queries.GetCapabilityStats;
+using BerexQms.Application.AiEngine.Queries.GetContextStats;
 using BerexQms.Application.AiEngine.Queries.GetInteractionById;
 using BerexQms.Application.AiEngine.Queries.GetModelById;
 using BerexQms.Application.AiEngine.Queries.GetUserAiPermissions;
 using BerexQms.Application.AiEngine.Queries.ListAiActionLogs;
 using BerexQms.Application.AiEngine.Queries.ListCapabilityConfigs;
 using BerexQms.Application.AiEngine.Queries.ListInteractions;
+using BerexQms.Application.AiEngine.Queries.ListKnowledgeSources;
 using BerexQms.Application.AiEngine.Queries.ListModels;
 using BerexQms.Application.AiEngine.Queries.ListWorkflowDefinitions;
 using BerexQms.Application.AiEngine.Queries.ListWorkflowExecutions;
+using BerexQms.Application.AiEngine.Queries.SearchKnowledgeContext;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -338,6 +345,97 @@ public sealed class AiController : ControllerBase
 
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
     }
+
+    // ---- Knowledge Context ----
+
+    [HttpGet("context")]
+    public async Task<IActionResult> GetContext(
+        [FromQuery] string sourceModule,
+        [FromQuery] string? contextType,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new GetAiContextQuery(sourceModule, contextType), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("context/stats")]
+    public async Task<IActionResult> GetContextStats(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetContextStatsQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("context/search")]
+    public async Task<IActionResult> SearchContext(
+        [FromQuery] string searchTerm,
+        [FromQuery] string? sourceModule,
+        [FromQuery] int maxResults = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new SearchKnowledgeContextQuery(searchTerm, sourceModule, maxResults),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("context/documents")]
+    public async Task<IActionResult> CreateContextDocument(
+        [FromBody] CreateContextDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new CreateContextDocumentCommand(
+                request.SourceModule,
+                request.SourceEntityId,
+                request.ContextType,
+                request.Title,
+                request.Content,
+                request.MetadataJson),
+            cancellationToken);
+
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetContext), new { sourceModule = request.SourceModule }, new { id = result.Value })
+            : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPut("context/documents/{id:guid}")]
+    public async Task<IActionResult> UpdateContextDocument(
+        Guid id,
+        [FromBody] UpdateContextDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new UpdateContextDocumentCommand(id, request.Title, request.Content, request.MetadataJson),
+            cancellationToken);
+
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("context/documents/{id:guid}/index")]
+    public async Task<IActionResult> IndexContextDocument(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new IndexContextDocumentCommand(id), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("knowledge-sources")]
+    public async Task<IActionResult> ListKnowledgeSources(
+        [FromQuery] bool? activeOnly,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new ListKnowledgeSourcesQuery(activeOnly), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
 }
 
 // ---- Request Records ----
@@ -370,3 +468,10 @@ public sealed record ConfirmActionRequest(bool Confirm);
 public sealed record ExecuteWorkflowRequest(Guid WorkflowDefinitionId);
 
 public sealed record ConfirmWorkflowRequest(bool Confirm);
+
+public sealed record CreateContextDocumentRequest(
+    string SourceModule, string? SourceEntityId, string ContextType,
+    string Title, string Content, string? MetadataJson);
+
+public sealed record UpdateContextDocumentRequest(
+    string Title, string Content, string? MetadataJson);

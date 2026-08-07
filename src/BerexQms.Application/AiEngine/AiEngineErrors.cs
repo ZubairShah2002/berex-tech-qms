@@ -90,4 +90,20 @@ public static class AiEngineErrors
     public static readonly Error ContextDocumentAlreadyExists = Error.Conflict(
         "AiEngine.ContextDocumentAlreadyExists",
         "A context document for this source entity already exists.");
+
+    // ---- Sprint 15: AI Recommendation & Quality Intelligence Errors ----
+
+    public static readonly Error RecommendationNotFound = Error.NotFound(
+        "AiEngine.RecommendationNotFound", "AI recommendation not found.");
+
+    public static readonly Error InvalidRecommendationType = Error.Validation(
+        "AiEngine.InvalidRecommendationType",
+        "The specified recommendation type is not recognized.");
+
+    public static readonly Error InvalidSeverity = Error.Validation(
+        "AiEngine.InvalidSeverity", "The specified severity level is not recognized.");
+
+    public static readonly Error InvalidReviewAction = Error.Validation(
+        "AiEngine.InvalidReviewAction",
+        "Invalid review action. Valid values: accept, reject, review.");
 }

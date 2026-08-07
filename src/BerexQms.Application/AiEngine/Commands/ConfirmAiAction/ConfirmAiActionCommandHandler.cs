@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using BerexQms.Application.Abstractions.Messaging;
 using BerexQms.Application.AiEngine.DTOs;
+using BerexQms.Application.AiEngine.Interfaces;
 using BerexQms.Application.Interfaces;
+using BerexQms.Domain.AiEngine;
+using BerexQms.Domain.AiEngine.Enums;
 using BerexQms.Domain.AiEngine.Repositories;
 using BerexQms.SharedKernel.Results;
 
@@ -11,13 +14,16 @@ internal sealed class ConfirmAiActionCommandHandler
     : ICommandHandler<ConfirmAiActionCommand, AiActionLogDto>
 {
     private readonly IAiActionLogRepository _actionLogRepository;
+    private readonly IAiPermissionService _permissionService;
     private readonly ICurrentUserService _currentUserService;
 
     public ConfirmAiActionCommandHandler(
         IAiActionLogRepository actionLogRepository,
+        IAiPermissionService permissionService,
         ICurrentUserService currentUserService)
     {
         _actionLogRepository = actionLogRepository;
+        _permissionService = permissionService;
         _currentUserService = currentUserService;
     }
 
@@ -28,6 +34,16 @@ internal sealed class ConfirmAiActionCommandHandler
 
         if (actionLog is null)
             return AiEngineErrors.ActionLogNotFound;
+
+        // Verify the confirming user has sufficient permission for this action type
+        if (Enum.TryParse<AiActionType>(actionLog.ActionType, true, out var actionType))
+        {
+            var isAuthorized = await _permissionService.IsAuthorizedAsync(
+                _currentUserService.UserId, actionType, cancellationToken);
+
+            if (!isAuthorized)
+                return AiEngineErrors.InsufficientAiPermission;
+        }
 
         if (!request.Confirm)
         {

@@ -1,4 +1,5 @@
 using BerexQms.Domain.AiEngine.Enums;
+using BerexQms.Domain.AiEngine.Events;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.Exceptions;
 using BerexQms.SharedKernel.ValueObjects;
@@ -41,7 +42,7 @@ public sealed class AiPermissionPolicy : AggregateRoot<Guid>, IAuditableEntity
         if (grantedByUserId == Guid.Empty)
             throw new DomainException("Granting user ID is required.");
 
-        return new AiPermissionPolicy
+        var policy = new AiPermissionPolicy
         {
             Id = id,
             TenantId = tenantId,
@@ -52,6 +53,10 @@ public sealed class AiPermissionPolicy : AggregateRoot<Guid>, IAuditableEntity
             GrantedAt = DateTime.UtcNow,
             Notes = notes,
         };
+
+        policy.AddDomainEvent(new AiPermissionGrantedEvent(userId, level.ToString(), grantedByUserId));
+
+        return policy;
     }
 
     public void UpdateLevel(AiPermissionLevel newLevel, Guid updatedByUserId)
@@ -62,6 +67,8 @@ public sealed class AiPermissionPolicy : AggregateRoot<Guid>, IAuditableEntity
         PermissionLevel = newLevel.ToString();
         GrantedByUserId = updatedByUserId.ToString();
         GrantedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new AiPermissionGrantedEvent(UserId, newLevel.ToString(), updatedByUserId));
     }
 
     public void Revoke(Guid revokedByUserId)

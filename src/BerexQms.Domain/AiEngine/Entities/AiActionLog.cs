@@ -1,4 +1,5 @@
 using BerexQms.Domain.AiEngine.Enums;
+using BerexQms.Domain.AiEngine.Events;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.Exceptions;
 using BerexQms.SharedKernel.ValueObjects;
@@ -124,6 +125,8 @@ public sealed class AiActionLog : AggregateRoot<Guid>, IAuditableEntity
         ModelVersion = modelVersion;
         ConfidenceScore = confidenceScore;
         IsRollbackPossible = isRollbackPossible;
+
+        AddDomainEvent(new AiActionExecutedEvent(Id, UserId, ActionType, "Success"));
     }
 
     public void RecordFailure(string errorDetail, int durationMs)
@@ -132,6 +135,8 @@ public sealed class AiActionLog : AggregateRoot<Guid>, IAuditableEntity
         ErrorDetail = errorDetail;
         CompletedAt = DateTime.UtcNow;
         DurationMs = durationMs;
+
+        AddDomainEvent(new AiActionExecutedEvent(Id, UserId, ActionType, "Failed"));
     }
 
     public void ExpireConfirmation()

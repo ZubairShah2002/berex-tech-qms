@@ -1,4 +1,5 @@
 using BerexQms.Domain.AiEngine.Enums;
+using BerexQms.Domain.AiEngine.Events;
 using BerexQms.SharedKernel.Abstractions;
 using BerexQms.SharedKernel.Exceptions;
 using BerexQms.SharedKernel.ValueObjects;
@@ -108,6 +109,9 @@ public sealed class AiWorkflowExecution : AggregateRoot<Guid>, IAuditableEntity
         Output = output;
         CompletedAt = DateTime.UtcNow;
         TotalDurationMs = totalDurationMs;
+
+        AddDomainEvent(new AiWorkflowCompletedEvent(
+            Id, WorkflowName, UserId, Status, CompletedSteps, FailedSteps));
     }
 
     public void Fail(string errorSummary, int totalDurationMs)
@@ -116,11 +120,15 @@ public sealed class AiWorkflowExecution : AggregateRoot<Guid>, IAuditableEntity
         ErrorSummary = errorSummary;
         CompletedAt = DateTime.UtcNow;
         TotalDurationMs = totalDurationMs;
+
+        AddDomainEvent(new AiWorkflowCompletedEvent(
+            Id, WorkflowName, UserId, Status, CompletedSteps, FailedSteps));
     }
 
     public void Cancel()
     {
-        if (Status is not ("PendingConfirmation" or "Running"))
+        if (Status != AiWorkflowStatus.PendingConfirmation.ToString() &&
+            Status != AiWorkflowStatus.Running.ToString())
             throw new DomainException("Only a pending or running workflow can be cancelled.");
 
         Status = AiWorkflowStatus.Cancelled.ToString();

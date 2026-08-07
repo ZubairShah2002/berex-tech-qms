@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using BerexQms.Application.Abstractions.Messaging;
 using BerexQms.Application.AiEngine.DTOs;
+using BerexQms.Application.AiEngine.Interfaces;
+using BerexQms.Application.Interfaces;
+using BerexQms.Domain.AiEngine.Enums;
 using BerexQms.Domain.AiEngine.Repositories;
 using BerexQms.SharedKernel.Results;
 
@@ -11,13 +14,19 @@ internal sealed class ConfirmWorkflowCommandHandler
 {
     private readonly IAiWorkflowExecutionRepository _executionRepository;
     private readonly IAiWorkflowDefinitionRepository _definitionRepository;
+    private readonly IAiPermissionService _permissionService;
+    private readonly ICurrentUserService _currentUserService;
 
     public ConfirmWorkflowCommandHandler(
         IAiWorkflowExecutionRepository executionRepository,
-        IAiWorkflowDefinitionRepository definitionRepository)
+        IAiWorkflowDefinitionRepository definitionRepository,
+        IAiPermissionService permissionService,
+        ICurrentUserService currentUserService)
     {
         _executionRepository = executionRepository;
         _definitionRepository = definitionRepository;
+        _permissionService = permissionService;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Result<AiWorkflowExecutionDto>> Handle(
@@ -27,6 +36,20 @@ internal sealed class ConfirmWorkflowCommandHandler
 
         if (execution is null)
             return AiEngineErrors.WorkflowExecutionNotFound;
+
+        // Verify the confirming user has the required permission level for this workflow
+        var definition = await _definitionRepository.GetByIdAsync(
+            execution.WorkflowDefinitionId, cancellationToken);
+
+        if (definition is not null &&
+            Enum.TryParse<AiPermissionLevel>(definition.MinimumPermissionLevel, true, out var requiredLevel))
+        {
+            var userLevel = await _permissionService.GetUserPermissionLevelAsync(
+                _currentUserService.UserId, cancellationToken);
+
+            if ((int)userLevel < (int)requiredLevel)
+                return AiEngineErrors.InsufficientAiPermission;
+        }
 
         if (!request.Confirm)
         {

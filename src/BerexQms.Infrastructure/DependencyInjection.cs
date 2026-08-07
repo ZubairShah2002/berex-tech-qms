@@ -27,8 +27,10 @@ using BerexQms.Domain.Training.Repositories;
 using BerexQms.Infrastructure.Training.Repositories;
 using BerexQms.Domain.Spc.Repositories;
 using BerexQms.Infrastructure.Spc.Repositories;
+using BerexQms.Application.AiEngine.Interfaces;
 using BerexQms.Domain.AiEngine.Repositories;
 using BerexQms.Infrastructure.AiEngine.Repositories;
+using BerexQms.Infrastructure.AiEngine.Services;
 using BerexQms.Infrastructure.Services;
 using BerexQms.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -162,5 +164,11 @@ public static class DependencyInjection
         services.AddScoped<IAiInteractionRepository, AiInteractionRepository>();
         services.AddScoped<IAiModelRepository, AiModelRepository>();
         services.AddScoped<IAiCapabilityConfigRepository, AiCapabilityConfigRepository>();
+
+        services.AddScoped<IAiActionLogRepository, AiActionLogRepository>();
+        services.AddScoped<IAiPermissionPolicyRepository, AiPermissionPolicyRepository>();
+        services.AddScoped<IAiWorkflowDefinitionRepository, AiWorkflowDefinitionRepository>();
+        services.AddScoped<IAiWorkflowExecutionRepository, AiWorkflowExecutionRepository>();
+        services.AddScoped<IAiPermissionService, AiPermissionService>();
     }
 }

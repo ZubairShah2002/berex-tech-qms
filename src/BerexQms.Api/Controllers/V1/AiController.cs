@@ -1,16 +1,26 @@
 using Asp.Versioning;
+using BerexQms.Application.AiEngine.Commands.AssignAiPermissionLevel;
+using BerexQms.Application.AiEngine.Commands.ConfirmAiAction;
+using BerexQms.Application.AiEngine.Commands.ConfirmWorkflow;
+using BerexQms.Application.AiEngine.Commands.ExecuteAiAction;
+using BerexQms.Application.AiEngine.Commands.ExecuteWorkflow;
 using BerexQms.Application.AiEngine.Commands.RecordUserAction;
 using BerexQms.Application.AiEngine.Commands.RegisterModel;
 using BerexQms.Application.AiEngine.Commands.RequestPrediction;
+using BerexQms.Application.AiEngine.Commands.RevokeAiPermission;
 using BerexQms.Application.AiEngine.Commands.ToggleCapability;
 using BerexQms.Application.AiEngine.Commands.TransitionModelStatus;
 using BerexQms.Application.AiEngine.Commands.UpdateCapabilityThresholds;
 using BerexQms.Application.AiEngine.Queries.GetCapabilityStats;
 using BerexQms.Application.AiEngine.Queries.GetInteractionById;
 using BerexQms.Application.AiEngine.Queries.GetModelById;
+using BerexQms.Application.AiEngine.Queries.GetUserAiPermissions;
+using BerexQms.Application.AiEngine.Queries.ListAiActionLogs;
 using BerexQms.Application.AiEngine.Queries.ListCapabilityConfigs;
 using BerexQms.Application.AiEngine.Queries.ListInteractions;
 using BerexQms.Application.AiEngine.Queries.ListModels;
+using BerexQms.Application.AiEngine.Queries.ListWorkflowDefinitions;
+using BerexQms.Application.AiEngine.Queries.ListWorkflowExecutions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -192,6 +202,142 @@ public sealed class AiController : ControllerBase
 
         return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error.Message });
     }
+
+    // ---- AI Permissions ----
+
+    [HttpGet("permissions/{userId:guid}")]
+    public async Task<IActionResult> GetUserPermissions(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new GetUserAiPermissionsQuery(userId), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("permissions/assign")]
+    public async Task<IActionResult> AssignPermissionLevel(
+        [FromBody] AssignPermissionLevelRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new AssignAiPermissionLevelCommand(request.UserId, request.PermissionLevel, request.Notes),
+            cancellationToken);
+
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("permissions/revoke")]
+    public async Task<IActionResult> RevokePermission(
+        [FromBody] RevokePermissionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new RevokeAiPermissionCommand(request.UserId), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error.Message });
+    }
+
+    // ---- AI Actions ----
+
+    [HttpPost("actions/execute")]
+    public async Task<IActionResult> ExecuteAction(
+        [FromBody] ExecuteActionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ExecuteAiActionCommand(
+                request.ActionType,
+                request.Prompt,
+                request.TargetModule,
+                request.TargetRecordId,
+                request.TargetRecordType,
+                request.Parameters),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("actions/{actionLogId:guid}/confirm")]
+    public async Task<IActionResult> ConfirmAction(
+        Guid actionLogId,
+        [FromBody] ConfirmActionRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ConfirmAiActionCommand(actionLogId, request.Confirm), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("actions/logs")]
+    public async Task<IActionResult> ListActionLogs(
+        [FromQuery] string? actionType,
+        [FromQuery] string? permissionLevel,
+        [FromQuery] string? executionResult,
+        [FromQuery] Guid? userId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new ListAiActionLogsQuery(page, pageSize, actionType, permissionLevel, executionResult, userId),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    // ---- Workflows ----
+
+    [HttpGet("workflows/definitions")]
+    public async Task<IActionResult> ListWorkflowDefinitions(
+        [FromQuery] bool activeOnly = true,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new ListWorkflowDefinitionsQuery(activeOnly), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("workflows/execute")]
+    public async Task<IActionResult> ExecuteWorkflow(
+        [FromBody] ExecuteWorkflowRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ExecuteWorkflowCommand(request.WorkflowDefinitionId), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("workflows/executions/{executionId:guid}/confirm")]
+    public async Task<IActionResult> ConfirmWorkflow(
+        Guid executionId,
+        [FromBody] ConfirmWorkflowRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ConfirmWorkflowCommand(executionId, request.Confirm), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("workflows/executions")]
+    public async Task<IActionResult> ListWorkflowExecutions(
+        [FromQuery] string? status,
+        [FromQuery] Guid? userId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new ListWorkflowExecutionsQuery(page, pageSize, status, userId),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
 }
 
 // ---- Request Records ----
@@ -210,3 +356,17 @@ public sealed record RegisterModelRequest(
     string Name, string Version, string Capability, string? Description, string? HyperParameters);
 
 public sealed record TransitionModelStatusRequest(string TargetStatus);
+
+public sealed record AssignPermissionLevelRequest(Guid UserId, string PermissionLevel, string? Notes);
+
+public sealed record RevokePermissionRequest(Guid UserId);
+
+public sealed record ExecuteActionRequest(
+    string ActionType, string? Prompt, string? TargetModule,
+    string? TargetRecordId, string? TargetRecordType, string? Parameters);
+
+public sealed record ConfirmActionRequest(bool Confirm);
+
+public sealed record ExecuteWorkflowRequest(Guid WorkflowDefinitionId);
+
+public sealed record ConfirmWorkflowRequest(bool Confirm);

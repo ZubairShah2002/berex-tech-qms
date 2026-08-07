@@ -80,6 +80,10 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<AiInteraction> AiInteractions => Set<AiInteraction>();
     public DbSet<AiModel> AiModels => Set<AiModel>();
     public DbSet<AiCapabilityConfig> AiCapabilityConfigs => Set<AiCapabilityConfig>();
+    public DbSet<AiActionLog> AiActionLogs => Set<AiActionLog>();
+    public DbSet<AiPermissionPolicy> AiPermissionPolicies => Set<AiPermissionPolicy>();
+    public DbSet<AiWorkflowDefinition> AiWorkflowDefinitions => Set<AiWorkflowDefinition>();
+    public DbSet<AiWorkflowExecution> AiWorkflowExecutions => Set<AiWorkflowExecution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

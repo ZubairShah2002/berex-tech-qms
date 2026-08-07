@@ -42,4 +42,33 @@ public static class AiEngineErrors
     public static readonly Error InteractionNotCompleted = Error.Validation(
         "AiEngine.InteractionNotCompleted",
         "A user action can only be recorded on a completed AI interaction.");
+
+    // ---- v2.0: AI Permission & Workflow Errors ----
+
+    public static readonly Error InvalidPermissionLevel = Error.Validation(
+        "AiEngine.InvalidPermissionLevel", "The specified AI permission level is not recognized.");
+
+    public static readonly Error InsufficientAiPermission = Error.Forbidden(
+        "AiEngine.InsufficientAiPermission",
+        "Your AI permission level is insufficient for this action.");
+
+    public static readonly Error InvalidActionType = Error.Validation(
+        "AiEngine.InvalidActionType", "The specified AI action type is not recognized.");
+
+    public static readonly Error ActionLogNotFound = Error.NotFound(
+        "AiEngine.ActionLogNotFound", "AI action log entry not found.");
+
+    public static readonly Error PermissionPolicyNotFound = Error.NotFound(
+        "AiEngine.PermissionPolicyNotFound",
+        "No active AI permission policy found for this user.");
+
+    public static readonly Error WorkflowDefinitionNotFound = Error.NotFound(
+        "AiEngine.WorkflowDefinitionNotFound", "AI workflow definition not found.");
+
+    public static readonly Error WorkflowDefinitionInactive = Error.Validation(
+        "AiEngine.WorkflowDefinitionInactive",
+        "This workflow definition is currently inactive.");
+
+    public static readonly Error WorkflowExecutionNotFound = Error.NotFound(
+        "AiEngine.WorkflowExecutionNotFound", "AI workflow execution not found.");
 }

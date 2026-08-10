@@ -71,14 +71,22 @@ internal sealed class AiUsageTrackingService : IAiUsageService
 
         var byProvider = records
             .GroupBy(r => r.Provider)
-            .Select(g => new AiUsageByProviderDto
+            .Select(g =>
             {
-                Provider = g.Key,
-                RequestCount = g.Count(),
-                TotalTokens = g.Sum(r => r.TotalTokens),
-                EstimatedCostUsd = g.Sum(r => r.EstimatedCostUsd ?? 0),
-                AverageProcessingTimeMs = (long)g.Average(r => r.ProcessingTimeMs),
-                FailedCount = g.Count(r => !r.Success),
+                var count = g.Count();
+                var successCount = g.Count(r => r.Success);
+                return new AiUsageByProviderDto
+                {
+                    Provider = g.Key,
+                    RequestCount = count,
+                    TotalTokens = g.Sum(r => r.TotalTokens),
+                    EstimatedCostUsd = g.Sum(r => r.EstimatedCostUsd ?? 0),
+                    AverageProcessingTimeMs = (long)g.Average(r => r.ProcessingTimeMs),
+                    FailedCount = g.Count(r => !r.Success),
+                    SuccessCount = successCount,
+                    SuccessRate = count > 0 ? Math.Round((decimal)successCount / count * 100, 1) : 0,
+                    FallbackCount = g.Count(r => r.WasFallback),
+                };
             })
             .OrderByDescending(p => p.RequestCount)
             .ToList();
@@ -95,9 +103,32 @@ internal sealed class AiUsageTrackingService : IAiUsageService
             .OrderByDescending(t => t.RequestCount)
             .ToList();
 
+        // Cost optimization metrics
+        var localRecords = records.Where(r => r.Provider == "Local").ToList();
+        var cloudRecords = records.Where(r => r.Provider != "Local").ToList();
+
+        var localRequests = localRecords.Count;
+        var cloudRequests = cloudRecords.Count;
+        var totalRequests = records.Count;
+
+        // Estimate avoided API cost: use the average cloud cost per token
+        // applied to the tokens processed locally
+        var estimatedAvoidedCost = 0m;
+        if (cloudRecords.Count > 0 && localRecords.Count > 0)
+        {
+            var totalCloudTokens = cloudRecords.Sum(r => r.TotalTokens);
+            var totalCloudCost = cloudRecords.Sum(r => r.EstimatedCostUsd ?? 0);
+            var avgCostPerToken = totalCloudTokens > 0
+                ? totalCloudCost / totalCloudTokens
+                : 0;
+
+            var localTokens = localRecords.Sum(r => r.TotalTokens);
+            estimatedAvoidedCost = localTokens * avgCostPerToken;
+        }
+
         return new AiUsageSummaryDto
         {
-            TotalRequests = records.Count,
+            TotalRequests = totalRequests,
             SuccessfulRequests = records.Count(r => r.Success),
             FailedRequests = records.Count(r => !r.Success),
             FallbackRequests = records.Count(r => r.WasFallback),
@@ -107,6 +138,11 @@ internal sealed class AiUsageTrackingService : IAiUsageService
             AverageProcessingTimeMs = (long)records.Average(r => r.ProcessingTimeMs),
             UsageByProvider = byProvider,
             UsageByTaskType = byTaskType,
+            LocalRequests = localRequests,
+            CloudRequests = cloudRequests,
+            LocalUsagePercent = totalRequests > 0 ? Math.Round((decimal)localRequests / totalRequests * 100, 1) : 0,
+            CloudUsagePercent = totalRequests > 0 ? Math.Round((decimal)cloudRequests / totalRequests * 100, 1) : 0,
+            EstimatedAvoidedApiCostUsd = Math.Round(estimatedAvoidedCost, 4),
         };
     }
 }

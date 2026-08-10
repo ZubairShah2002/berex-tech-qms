@@ -34,6 +34,7 @@ using BerexQms.Application.AiEngine.Queries.ListKnowledgeSources;
 using BerexQms.Application.AiEngine.Queries.GetAiProviderStatus;
 using BerexQms.Application.AiEngine.Queries.GetAiTaskMappings;
 using BerexQms.Application.AiEngine.Queries.GetAiUsageSummary;
+using BerexQms.Application.AiEngine.Queries.GetLocalModels;
 using BerexQms.Application.AiEngine.Queries.ListModels;
 using BerexQms.Application.AiEngine.Queries.ListWorkflowDefinitions;
 using BerexQms.Application.AiEngine.Queries.ListWorkflowExecutions;
@@ -564,6 +565,15 @@ public sealed class AiController : ControllerBase
     public async Task<IActionResult> GetUsageSummary(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetAiUsageSummaryQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("providers/local/models")]
+    public async Task<IActionResult> GetLocalModels(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new GetLocalModelsQuery(), cancellationToken);
 
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
     }

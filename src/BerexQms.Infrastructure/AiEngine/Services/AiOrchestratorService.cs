@@ -2,6 +2,7 @@ using BerexQms.Application.AiEngine.DTOs;
 using BerexQms.Application.AiEngine.Interfaces;
 using BerexQms.Infrastructure.AiEngine.Configuration;
 using BerexQms.Infrastructure.AiEngine.Providers;
+using BerexQms.Infrastructure.AiEngine.Providers.Local;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -12,13 +13,13 @@ namespace BerexQms.Infrastructure.AiEngine.Services;
 ///
 /// Flow:
 /// 1. Determine task type
-/// 2. Select provider based on configuration
+/// 2. Resolve provider routing chain (primary → fallback1 → fallback2)
 /// 3. Retrieve relevant QMS context (via context service)
 /// 4. Build prompts (via prompt template manager)
-/// 5. Validate context size
-/// 6. Call AI provider
+/// 5. Validate context size (provider-aware limits)
+/// 6. Call primary provider
 /// 7. Validate response
-/// 8. Attempt failover if primary fails
+/// 8. Walk fallback chain on technical failure
 /// 9. Record usage
 /// 10. Return normalized result
 ///
@@ -53,11 +54,10 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
     public async Task<AiProviderResponseDto> ExecuteAsync(
         AiOrchestratorRequest request, CancellationToken ct)
     {
-        // 1. Resolve provider for this task type
-        var primaryProviderName = ResolveProvider(request.TaskType);
-        var fallbackProviderName = ResolveFallbackProvider(request.TaskType);
+        // 1. Resolve ordered provider chain for this task type
+        var providerChain = ResolveProviderChain(request.TaskType);
 
-        if (primaryProviderName == null)
+        if (providerChain.Count == 0)
         {
             _logger.LogWarning("No provider configured for task type {TaskType}", request.TaskType);
             return FailedResponse("NoProvider", "No AI provider configured for this task type.");
@@ -71,16 +71,8 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
         var (systemPrompt, userPrompt, outputSchema) = await _promptManager.GetPromptsAsync(
             request.TaskType, request.Module, request.Content, ct);
 
-        // 4. Validate context size
-        var totalContextChars = contextSnippets.Sum(c => c.Content.Length);
-        if (totalContextChars > _options.MaxContextSizeChars)
-        {
-            // Trim to fit — take highest relevance first
-            contextSnippets = TrimContext(contextSnippets, _options.MaxContextSizeChars);
-        }
-
-        // 5. Build provider request
-        var providerRequest = new AiProviderRequestDto
+        // 4. Build provider request (context will be trimmed per provider)
+        var baseProviderRequest = new AiProviderRequestDto
         {
             TaskType = request.TaskType,
             SystemPrompt = systemPrompt,
@@ -89,27 +81,46 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
             OutputSchema = outputSchema,
         };
 
-        // 6. Call primary provider
-        var response = await CallProviderAsync(primaryProviderName, providerRequest, ct);
-
-        // 7. Failover if primary failed
+        // 5. Walk the provider chain
+        AiProviderResponseDto? response = null;
         var wasFallback = false;
         string? fallbackFrom = null;
+        var attemptedProviders = new List<string>();
 
-        if (!response.Success && fallbackProviderName != null
-            && fallbackProviderName != primaryProviderName
-            && IsTechnicalFailure(response.ErrorCategory))
+        foreach (var providerName in providerChain)
         {
-            _logger.LogWarning(
-                "Primary provider {Primary} failed ({Error}). Falling back to {Fallback}",
-                primaryProviderName, response.ErrorCategory, fallbackProviderName);
+            if (attemptedProviders.Count >= _options.MaxFallbackChain)
+                break;
 
-            fallbackFrom = primaryProviderName;
-            response = await CallProviderAsync(fallbackProviderName, providerRequest, ct);
-            wasFallback = true;
+            // Track fallback state before calling provider — any attempt
+            // beyond the first is a fallback, regardless of success/failure
+            if (attemptedProviders.Count > 0)
+            {
+                wasFallback = true;
+                fallbackFrom ??= attemptedProviders[0];
+            }
+
+            // Apply provider-specific context size limit
+            var providerRequest = ApplyContextLimit(baseProviderRequest, providerName);
+
+            response = await CallProviderAsync(providerName, providerRequest, ct);
+            attemptedProviders.Add(providerName);
+
+            if (response.Success)
+                break;
+
+            if (!IsTechnicalFailure(response.ErrorCategory))
+                break; // Business/auth failure — don't fallback
+
+            _logger.LogWarning(
+                "Provider {Provider} failed ({Error}) for task {TaskType}. {Remaining} fallback(s) remaining",
+                providerName, response.ErrorCategory, request.TaskType,
+                providerChain.Count - attemptedProviders.Count);
         }
 
-        // 8. Record usage
+        response ??= FailedResponse("NoProvider", "No AI provider available for this task type.");
+
+        // 6. Record usage
         var contextIds = string.Join(",",
             contextSnippets.Select(c => c.DocumentId).Distinct());
 
@@ -129,8 +140,6 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
     public async Task<IReadOnlyList<AiProviderStatusDto>> GetProviderStatusAsync(
         CancellationToken ct)
     {
-        await Task.CompletedTask;
-
         var statuses = new List<AiProviderStatusDto>();
 
         foreach (var provider in _providers.Values)
@@ -139,6 +148,12 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
                 statuses.Add(claude.GetStatus());
             else if (provider is OpenAiProvider openAi)
                 statuses.Add(openAi.GetStatus());
+            else if (provider is LocalAiProvider local)
+            {
+                // Run health check for Local provider to get fresh status
+                await local.CheckHealthAsync(ct);
+                statuses.Add(local.GetStatus());
+            }
         }
 
         return statuses;
@@ -146,6 +161,21 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
 
     public IReadOnlyList<AiTaskMappingDto> GetTaskMappings()
     {
+        // Use ProviderRouting if populated, otherwise fall back to legacy TaskMappings
+        if (_options.ProviderRouting.Count > 0)
+        {
+            return _options.ProviderRouting.Select(kv =>
+            {
+                var chain = kv.Value;
+                return new AiTaskMappingDto
+                {
+                    TaskType = kv.Key,
+                    PrimaryProvider = chain.Count > 0 ? chain[0] : string.Empty,
+                    FallbackProvider = chain.Count > 1 ? string.Join(" → ", chain.Skip(1)) : null,
+                };
+            }).ToList();
+        }
+
         return _options.TaskMappings.Select(kv => new AiTaskMappingDto
         {
             TaskType = kv.Key,
@@ -154,31 +184,80 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
         }).ToList();
     }
 
-    // ---- Private helpers ----
-
-    private string? ResolveProvider(string taskType)
+    public async Task<IReadOnlyList<AiLocalModelDto>> GetLocalModelsAsync(
+        CancellationToken ct)
     {
-        if (_options.TaskMappings.TryGetValue(taskType, out var provider))
-        {
-            // If configured provider is disabled, try fallback
-            if (_providers.TryGetValue(provider, out var p) && p.IsEnabled)
-                return provider;
+        if (!_providers.TryGetValue("Local", out var provider) || !provider.IsEnabled)
+            return [];
 
-            // Primary disabled, try fallback
-            var fallback = ResolveFallbackProvider(taskType);
-            if (fallback != null && _providers.TryGetValue(fallback, out var fb) && fb.IsEnabled)
-                return fallback;
-        }
+        if (provider is not LocalAiProvider localProvider)
+            return [];
 
-        // No mapping — pick first enabled provider
-        return _providers.Values.FirstOrDefault(p => p.IsEnabled)?.ProviderName;
+        var models = await localProvider.ListAvailableModelsAsync(ct);
+        return models;
     }
 
-    private string? ResolveFallbackProvider(string taskType)
+    // ---- Private helpers ----
+
+    /// <summary>
+    /// Resolve the ordered provider chain for a task type.
+    /// Uses ProviderRouting if available, otherwise falls back to legacy TaskMappings/FallbackMappings.
+    /// Only returns providers that are registered and enabled.
+    /// </summary>
+    private List<string> ResolveProviderChain(string taskType)
     {
+        // Prefer new ProviderRouting
+        if (_options.ProviderRouting.TryGetValue(taskType, out var routing) && routing.Count > 0)
+        {
+            return routing
+                .Where(name => _providers.TryGetValue(name, out var p) && p.IsEnabled)
+                .ToList();
+        }
+
+        // Legacy fallback: TaskMappings + FallbackMappings (2-provider chain)
+        var chain = new List<string>();
+
+        if (_options.TaskMappings.TryGetValue(taskType, out var primary))
+        {
+            if (_providers.TryGetValue(primary, out var pp) && pp.IsEnabled)
+                chain.Add(primary);
+        }
+
         if (_options.FallbackMappings.TryGetValue(taskType, out var fallback))
-            return fallback;
-        return null;
+        {
+            if (fallback != primary && _providers.TryGetValue(fallback, out var fp) && fp.IsEnabled)
+                chain.Add(fallback);
+        }
+
+        // If no configured provider, add any enabled provider
+        if (chain.Count == 0)
+        {
+            var anyEnabled = _providers.Values.FirstOrDefault(p => p.IsEnabled);
+            if (anyEnabled != null)
+                chain.Add(anyEnabled.ProviderName);
+        }
+
+        return chain;
+    }
+
+    /// <summary>
+    /// Apply provider-specific context size limits.
+    /// Local provider has a smaller context window than cloud providers.
+    /// </summary>
+    private AiProviderRequestDto ApplyContextLimit(
+        AiProviderRequestDto request, string providerName)
+    {
+        var maxChars = providerName == "Local"
+            ? _options.MaxLocalContextSizeChars
+            : _options.MaxContextSizeChars;
+
+        var totalContextChars = request.ContextDocuments.Sum(c => c.Content.Length);
+
+        if (totalContextChars <= maxChars)
+            return request;
+
+        var trimmed = TrimContext(request.ContextDocuments, maxChars);
+        return request with { ContextDocuments = trimmed };
     }
 
     private async Task<IReadOnlyList<AiContextSnippetDto>> RetrieveContextAsync(
@@ -235,7 +314,8 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
     {
         // Only failover for technical failures, NOT for auth/business errors
         return errorCategory is "Timeout" or "NetworkError" or "RateLimit"
-            or "MaxRetriesExceeded" or "HttpError";
+            or "MaxRetriesExceeded" or "HttpError" or "EmptyResponse"
+            or "ValidationError" or "ProviderError";
     }
 
     private static IReadOnlyList<AiContextSnippetDto> TrimContext(

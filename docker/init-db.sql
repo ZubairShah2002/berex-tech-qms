@@ -1718,6 +1718,43 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_ai_knowledge_sources_tenant_module
 CREATE INDEX IF NOT EXISTS ix_ai_knowledge_sources_tenant_active
     ON ai_engine.ai_knowledge_sources(tenant_id, is_active);
 
+-- Sprint 15: AI Recommendations table
+
+CREATE TABLE IF NOT EXISTS ai_engine.ai_recommendations (
+    id                  UUID PRIMARY KEY,
+    tenant_id           UUID NOT NULL,
+    recommendation_type VARCHAR(50) NOT NULL,
+    title               VARCHAR(500) NOT NULL,
+    description         VARCHAR(5000) NOT NULL,
+    severity            VARCHAR(20) NOT NULL,
+    source_context_ids  VARCHAR(2000),
+    related_module      VARCHAR(100) NOT NULL,
+    related_entity_id   VARCHAR(200),
+    confidence_score    NUMERIC(5,4) NOT NULL,
+    status              VARCHAR(20) NOT NULL,
+    reason              VARCHAR(5000) NOT NULL,
+    supporting_data     TEXT,
+    recommended_action  VARCHAR(2000),
+    reviewed_at         TIMESTAMP,
+    reviewed_by         VARCHAR(100),
+    review_notes        VARCHAR(2000),
+    created_by          VARCHAR(100) NOT NULL,
+    created_at          TIMESTAMP NOT NULL,
+    modified_by         VARCHAR(100),
+    modified_at         TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ix_ai_recommendations_tenant_type
+    ON ai_engine.ai_recommendations(tenant_id, recommendation_type);
+CREATE INDEX IF NOT EXISTS ix_ai_recommendations_tenant_status
+    ON ai_engine.ai_recommendations(tenant_id, status);
+CREATE INDEX IF NOT EXISTS ix_ai_recommendations_tenant_severity
+    ON ai_engine.ai_recommendations(tenant_id, severity);
+CREATE INDEX IF NOT EXISTS ix_ai_recommendations_tenant_module
+    ON ai_engine.ai_recommendations(tenant_id, related_module);
+CREATE INDEX IF NOT EXISTS ix_ai_recommendations_tenant_created
+    ON ai_engine.ai_recommendations(tenant_id, created_at);
+
 -- RLS policies
 ALTER TABLE ai_engine.ai_models ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_interactions ENABLE ROW LEVEL SECURITY;
@@ -1728,6 +1765,7 @@ ALTER TABLE ai_engine.ai_workflow_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_workflow_executions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_context_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_engine.ai_knowledge_sources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_engine.ai_recommendations ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_ai_models ON ai_engine.ai_models
     USING (tenant_id = shared.current_tenant_id());
@@ -1754,4 +1792,7 @@ CREATE POLICY tenant_isolation_ai_context_documents ON ai_engine.ai_context_docu
     USING (tenant_id = shared.current_tenant_id());
 
 CREATE POLICY tenant_isolation_ai_knowledge_sources ON ai_engine.ai_knowledge_sources
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_recommendations ON ai_engine.ai_recommendations
     USING (tenant_id = shared.current_tenant_id());

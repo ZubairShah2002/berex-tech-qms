@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle, Database, Search } from 'lucide-react'
+import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle, Database, Search, TrendingUp, BarChart3, CheckCircle, XCircle, Eye } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { DataTable } from '@/components/ui/DataTable'
@@ -159,10 +159,67 @@ interface KnowledgeSourceDto {
   createdAt: string
 }
 
+interface AiRecommendationDto {
+  id: string
+  recommendationType: string
+  title: string
+  description: string
+  severity: string
+  sourceContextIds: string | null
+  relatedModule: string
+  relatedEntityId: string | null
+  confidenceScore: number
+  status: string
+  reason: string
+  supportingData: string | null
+  recommendedAction: string | null
+  reviewedAt: string | null
+  reviewedBy: string | null
+  reviewNotes: string | null
+  createdAt: string
+  modifiedAt: string | null
+}
+
+interface QualityInsightDto {
+  category: string
+  title: string
+  description: string
+  severity: string
+  confidenceScore: number
+  relatedModule: string
+  supportingEvidence: string | null
+  generatedAt: string
+}
+
+interface RiskSummaryDto {
+  totalRecommendations: number
+  criticalCount: number
+  highCount: number
+  mediumCount: number
+  lowCount: number
+  pendingReview: number
+  acceptedCount: number
+  rejectedCount: number
+  riskByModule: RiskByModuleDto[]
+  riskByType: RiskByTypeDto[]
+}
+
+interface RiskByModuleDto {
+  module: string
+  count: number
+  criticalCount: number
+  highCount: number
+}
+
+interface RiskByTypeDto {
+  recommendationType: string
+  count: number
+  averageConfidence: number
+}
 
 // ---- Constants --------------------------------------------------------------
 
-type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows' | 'knowledgeContext'
+type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows' | 'knowledgeContext' | 'aiInsights'
 
 const capabilityLabels: Record<string, string> = {
   DefectPrediction: 'Defect Prediction',
@@ -272,6 +329,48 @@ const riskColors: Record<string, string> = {
   Critical: 'var(--color-error)',
 }
 
+const recommendationTypeLabels: Record<string, string> = {
+  DefectTrend: 'Defect Trend',
+  SupplierRisk: 'Supplier Risk',
+  ProcessRisk: 'Process Risk',
+  DocumentGap: 'Document Gap',
+  AuditRisk: 'Audit Risk',
+  CAPARecommendation: 'CAPA Recommendation',
+}
+
+const recommendationTypeOptions = [
+  { value: '', label: 'All types' },
+  { value: 'DefectTrend', label: 'Defect Trend' },
+  { value: 'SupplierRisk', label: 'Supplier Risk' },
+  { value: 'ProcessRisk', label: 'Process Risk' },
+  { value: 'DocumentGap', label: 'Document Gap' },
+  { value: 'AuditRisk', label: 'Audit Risk' },
+  { value: 'CAPARecommendation', label: 'CAPA Recommendation' },
+]
+
+const recommendationStatusOptions = [
+  { value: '', label: 'All statuses' },
+  { value: 'Generated', label: 'Generated' },
+  { value: 'Reviewed', label: 'Reviewed' },
+  { value: 'Accepted', label: 'Accepted' },
+  { value: 'Rejected', label: 'Rejected' },
+  { value: 'Expired', label: 'Expired' },
+]
+
+const insightModuleOptions = [
+  { value: '', label: 'All modules' },
+  { value: 'ProductCatalog', label: 'Product Catalog' },
+  { value: 'Inspection', label: 'Inspection' },
+  { value: 'NonConformance', label: 'Non-Conformance' },
+  { value: 'Capa', label: 'CAPA' },
+  { value: 'DocumentControl', label: 'Document Control' },
+  { value: 'AuditManagement', label: 'Audit Management' },
+  { value: 'SupplierQuality', label: 'Supplier Quality' },
+  { value: 'Calibration', label: 'Calibration' },
+  { value: 'Training', label: 'Training' },
+  { value: 'Spc', label: 'SPC' },
+]
+
 const permissionLevelDescriptions: Record<string, string> = {
   Assistant: 'Read-only AI access. View predictions, suggestions, and reports.',
   Manager: 'Generate content and draft workflows. Can request AI-powered analysis.',
@@ -304,6 +403,11 @@ export function AiDashboardPage() {
   const [contextSearchTerm, setContextSearchTerm] = useState('')
   const [contextModuleFilter, setContextModuleFilter] = useState('')
   const [searchSubmitted, setSearchSubmitted] = useState('')
+
+  // AI Insights filters
+  const [recTypeFilter, setRecTypeFilter] = useState('')
+  const [recStatusFilter, setRecStatusFilter] = useState('')
+  const [insightModuleFilter, setInsightModuleFilter] = useState('')
 
   // Confirmation dialog
   const [confirmationRequest, setConfirmationRequest] = useState<AiConfirmationRequestDto | null>(null)
@@ -405,7 +509,53 @@ export function AiDashboardPage() {
     enabled: activeTab === 'knowledgeContext' && searchSubmitted.length >= 2,
   })
 
+  // AI Insights queries
+  const recommendationsQuery = useQuery({
+    queryKey: ['ai', 'recommendations', recTypeFilter, recStatusFilter],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (recTypeFilter) params.set('recommendationType', recTypeFilter)
+      if (recStatusFilter) params.set('status', recStatusFilter)
+      return apiClient.get<AiRecommendationDto[]>(`/api/v1/ai/recommendations?${params}`).then(r => r.data)
+    },
+    enabled: activeTab === 'aiInsights',
+  })
+
+  const riskSummaryQuery = useQuery({
+    queryKey: ['ai', 'riskSummary'],
+    queryFn: () => apiClient.get<RiskSummaryDto>('/api/v1/ai/risk-summary').then(r => r.data),
+    enabled: activeTab === 'aiInsights',
+  })
+
+  const insightsQuery = useQuery({
+    queryKey: ['ai', 'insights', insightModuleFilter],
+    queryFn: () => {
+      const params = new URLSearchParams()
+      if (insightModuleFilter) params.set('module', insightModuleFilter)
+      return apiClient.get<QualityInsightDto[]>(`/api/v1/ai/insights?${params}`).then(r => r.data)
+    },
+    enabled: activeTab === 'aiInsights',
+  })
+
   // ---- Mutations ----
+
+  const reviewRecommendationMutation = useMutation({
+    mutationFn: (data: { id: string; action: string; notes?: string }) =>
+      apiClient.post(`/api/v1/ai/recommendations/${data.id}/review`, { action: data.action, notes: data.notes }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai', 'recommendations'] })
+      queryClient.invalidateQueries({ queryKey: ['ai', 'riskSummary'] })
+    },
+  })
+
+  const dismissRecommendationMutation = useMutation({
+    mutationFn: (id: string) =>
+      apiClient.post(`/api/v1/ai/recommendations/${id}/dismiss`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai', 'recommendations'] })
+      queryClient.invalidateQueries({ queryKey: ['ai', 'riskSummary'] })
+    },
+  })
 
   const toggleMutation = useMutation({
     mutationFn: (data: { capability: string; enable: boolean }) =>
@@ -1097,6 +1247,323 @@ export function AiDashboardPage() {
     )
   }
 
+  // ---- AI Insights tab ----
+
+  function severityColor(severity: string): string {
+    switch (severity) {
+      case 'Critical': return 'var(--color-error)'
+      case 'High': return 'var(--color-error)'
+      case 'Medium': return 'var(--color-warning)'
+      case 'Low': return 'var(--color-success)'
+      default: return 'var(--color-text-secondary)'
+    }
+  }
+
+  function renderAiInsights() {
+    const riskLoading = riskSummaryQuery.isLoading
+    const recsLoading = recommendationsQuery.isLoading
+    const insightsLoading = insightsQuery.isLoading
+
+    const summary = riskSummaryQuery.data
+    const recommendations = recommendationsQuery.data ?? []
+    const insights = insightsQuery.data ?? []
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+        {/* Risk Summary */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Risk Summary</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Aggregate quality risk assessment based on AI-generated recommendations.
+          </p>
+          {riskLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 120 }} />
+          ) : summary ? (
+            <>
+              <div className={styles.riskStatsGrid}>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{summary.totalRecommendations}</p>
+                  <p className={styles.statLabel}>Total</p>
+                </div>
+                <div className={`${styles.statCard} ${summary.criticalCount > 0 ? styles.riskStatCritical : ''}`}>
+                  <p className={styles.statValue}>{summary.criticalCount}</p>
+                  <p className={styles.statLabel}>Critical</p>
+                </div>
+                <div className={`${styles.statCard} ${summary.highCount > 0 ? styles.riskStatHigh : ''}`}>
+                  <p className={styles.statValue}>{summary.highCount}</p>
+                  <p className={styles.statLabel}>High</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{summary.mediumCount}</p>
+                  <p className={styles.statLabel}>Medium</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{summary.lowCount}</p>
+                  <p className={styles.statLabel}>Low</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{summary.pendingReview}</p>
+                  <p className={styles.statLabel}>Pending Review</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{summary.acceptedCount}</p>
+                  <p className={styles.statLabel}>Accepted</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{summary.rejectedCount}</p>
+                  <p className={styles.statLabel}>Rejected</p>
+                </div>
+              </div>
+
+              {/* Risk by Module */}
+              {summary.riskByModule.length > 0 && (
+                <div style={{ marginTop: 'var(--spacing-5)' }}>
+                  <h4 className={styles.subsectionTitle}>Risk by Module</h4>
+                  <div className={styles.riskModuleGrid}>
+                    {summary.riskByModule.map(mod => (
+                      <div key={mod.module} className={styles.riskModuleCard}>
+                        <div className={styles.riskModuleHeader}>
+                          <span className={styles.riskModuleName}>{mod.module}</span>
+                          <span className={styles.riskModuleCount}>{mod.count}</span>
+                        </div>
+                        <div className={styles.riskModuleBreakdown}>
+                          {mod.criticalCount > 0 && (
+                            <span style={{ color: 'var(--color-error)', fontWeight: 600, fontSize: 'var(--font-size-xs)' }}>
+                              {mod.criticalCount} critical
+                            </span>
+                          )}
+                          {mod.highCount > 0 && (
+                            <span style={{ color: 'var(--color-error)', fontSize: 'var(--font-size-xs)' }}>
+                              {mod.highCount} high
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Risk by Type */}
+              {summary.riskByType.length > 0 && (
+                <div style={{ marginTop: 'var(--spacing-5)' }}>
+                  <h4 className={styles.subsectionTitle}>Risk by Type</h4>
+                  <div className={styles.riskTypeGrid}>
+                    {summary.riskByType.map(t => (
+                      <div key={t.recommendationType} className={styles.riskTypeCard}>
+                        <span className={styles.riskTypeName}>
+                          {recommendationTypeLabels[t.recommendationType] ?? t.recommendationType}
+                        </span>
+                        <span className={styles.riskTypeCount}>{t.count}</span>
+                        <span className={styles.riskTypeConfidence}>
+                          Avg confidence: {(t.averageConfidence * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
+        </div>
+
+        {/* Recommendations */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Recommendations</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            AI-generated quality recommendations. Review, accept, or reject each item.
+          </p>
+          <div className={styles.filters}>
+            <div className={styles.filterSelect}>
+              <Select
+                label=""
+                value={recTypeFilter}
+                onChange={(e) => setRecTypeFilter(e.target.value)}
+                options={recommendationTypeOptions}
+              />
+            </div>
+            <div className={styles.filterSelect}>
+              <Select
+                label=""
+                value={recStatusFilter}
+                onChange={(e) => setRecStatusFilter(e.target.value)}
+                options={recommendationStatusOptions}
+              />
+            </div>
+          </div>
+          {recsLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 200 }} />
+          ) : recommendations.length === 0 ? (
+            <div className={styles.emptyState}>
+              <BarChart3 size={48} className={styles.emptyIcon} />
+              <p>No recommendations generated yet.</p>
+            </div>
+          ) : (
+            <div className={styles.recommendationsList}>
+              {recommendations.map(rec => (
+                <div key={rec.id} className={styles.recommendationCard}>
+                  <div className={styles.recommendationHeader}>
+                    <div className={styles.recommendationTitleRow}>
+                      <span
+                        className={styles.severityDot}
+                        style={{ background: severityColor(rec.severity) }}
+                      />
+                      <h4 className={styles.recommendationTitle}>{rec.title}</h4>
+                    </div>
+                    <div className={styles.recommendationBadges}>
+                      <span className={styles.tag}>
+                        {recommendationTypeLabels[rec.recommendationType] ?? rec.recommendationType}
+                      </span>
+                      <StatusBadge status={rec.status} />
+                    </div>
+                  </div>
+
+                  <p className={styles.recommendationDesc}>{rec.description}</p>
+
+                  {rec.reason && (
+                    <div className={styles.recommendationDetail}>
+                      <span className={styles.recommendationDetailLabel}>Reason</span>
+                      <span>{rec.reason}</span>
+                    </div>
+                  )}
+
+                  {rec.recommendedAction && (
+                    <div className={styles.recommendationDetail}>
+                      <span className={styles.recommendationDetailLabel}>Recommended Action</span>
+                      <span>{rec.recommendedAction}</span>
+                    </div>
+                  )}
+
+                  {rec.supportingData && (
+                    <div className={styles.recommendationDetail}>
+                      <span className={styles.recommendationDetailLabel}>Supporting Data</span>
+                      <span>{rec.supportingData}</span>
+                    </div>
+                  )}
+
+                  <div className={styles.recommendationMeta}>
+                    <span>Module: {rec.relatedModule}</span>
+                    <span>Severity: <span style={{ color: severityColor(rec.severity), fontWeight: 600 }}>{rec.severity}</span></span>
+                    <span>Confidence: {(rec.confidenceScore * 100).toFixed(0)}%</span>
+                    <span>Generated: {formatDate(rec.createdAt)}</span>
+                  </div>
+
+                  {rec.reviewedBy && (
+                    <div className={styles.recommendationMeta}>
+                      <span>Reviewed by: {rec.reviewedBy}</span>
+                      {rec.reviewedAt && <span>Reviewed: {formatDate(rec.reviewedAt)}</span>}
+                      {rec.reviewNotes && <span>Notes: {rec.reviewNotes}</span>}
+                    </div>
+                  )}
+
+                  {(rec.status === 'Generated' || rec.status === 'Reviewed') && (
+                    <div className={styles.recommendationActions}>
+                      {rec.status === 'Generated' && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={reviewRecommendationMutation.isPending}
+                          onClick={() => reviewRecommendationMutation.mutate({ id: rec.id, action: 'review' })}
+                        >
+                          <Eye size={14} style={{ marginRight: 4 }} />
+                          Mark Reviewed
+                        </Button>
+                      )}
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={reviewRecommendationMutation.isPending}
+                        onClick={() => reviewRecommendationMutation.mutate({ id: rec.id, action: 'accept' })}
+                      >
+                        <CheckCircle size={14} style={{ marginRight: 4 }} />
+                        Accept
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={reviewRecommendationMutation.isPending}
+                        onClick={() => reviewRecommendationMutation.mutate({ id: rec.id, action: 'reject' })}
+                      >
+                        <XCircle size={14} style={{ marginRight: 4 }} />
+                        Reject
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={dismissRecommendationMutation.isPending}
+                        onClick={() => dismissRecommendationMutation.mutate(rec.id)}
+                      >
+                        Dismiss
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Quality Insights */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Quality Insights</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Real-time quality analysis generated from the QMS knowledge foundation.
+          </p>
+          <div className={styles.filters}>
+            <div className={styles.filterSelect}>
+              <Select
+                label=""
+                value={insightModuleFilter}
+                onChange={(e) => setInsightModuleFilter(e.target.value)}
+                options={insightModuleOptions}
+              />
+            </div>
+          </div>
+          {insightsLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 200 }} />
+          ) : insights.length === 0 ? (
+            <div className={styles.emptyState}>
+              <TrendingUp size={48} className={styles.emptyIcon} />
+              <p>No quality insights available. Context documents must be indexed before insights can be generated.</p>
+            </div>
+          ) : (
+            <div className={styles.insightsList}>
+              {insights.map((insight, idx) => (
+                <div key={`${insight.category}-${idx}`} className={styles.insightCard}>
+                  <div className={styles.insightHeader}>
+                    <div className={styles.recommendationTitleRow}>
+                      <span
+                        className={styles.severityDot}
+                        style={{ background: severityColor(insight.severity) }}
+                      />
+                      <h4 className={styles.recommendationTitle}>{insight.title}</h4>
+                    </div>
+                    <span style={{ color: severityColor(insight.severity), fontWeight: 600, fontSize: 'var(--font-size-xs)' }}>
+                      {insight.severity}
+                    </span>
+                  </div>
+                  <p className={styles.recommendationDesc}>{insight.description}</p>
+                  {insight.supportingEvidence && (
+                    <div className={styles.recommendationDetail}>
+                      <span className={styles.recommendationDetailLabel}>Evidence</span>
+                      <span>{insight.supportingEvidence}</span>
+                    </div>
+                  )}
+                  <div className={styles.recommendationMeta}>
+                    <span className={styles.tag}>{insight.category}</span>
+                    <span>Module: {insight.relatedModule}</span>
+                    <span>Confidence: {(insight.confidenceScore * 100).toFixed(0)}%</span>
+                    <span>Generated: {formatDate(insight.generatedAt)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // ---- Confirmation Dialog ----
 
   function renderConfirmationDialog() {
@@ -1210,6 +1677,10 @@ export function AiDashboardPage() {
           <Database size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
           Knowledge Context
         </button>
+        <button className={`${styles.tab} ${activeTab === 'aiInsights' ? styles.tabActive : ''}`} onClick={() => setActiveTab('aiInsights')}>
+          <TrendingUp size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          AI Insights
+        </button>
       </div>
 
       {activeTab === 'capabilities' && renderCapabilities()}
@@ -1219,6 +1690,7 @@ export function AiDashboardPage() {
       {activeTab === 'actionLog' && renderActionLog()}
       {activeTab === 'workflows' && renderWorkflows()}
       {activeTab === 'knowledgeContext' && renderKnowledgeContext()}
+      {activeTab === 'aiInsights' && renderAiInsights()}
 
       {renderConfirmationDialog()}
     </div>

@@ -14,6 +14,9 @@ using BerexQms.Application.AiEngine.Commands.ToggleCapability;
 using BerexQms.Application.AiEngine.Commands.TransitionModelStatus;
 using BerexQms.Application.AiEngine.Commands.UpdateCapabilityThresholds;
 using BerexQms.Application.AiEngine.Commands.UpdateContextDocument;
+using BerexQms.Application.AiEngine.Commands.CreateRecommendation;
+using BerexQms.Application.AiEngine.Commands.ReviewRecommendation;
+using BerexQms.Application.AiEngine.Commands.DismissRecommendation;
 using BerexQms.Application.AiEngine.Queries.GetAiContext;
 using BerexQms.Application.AiEngine.Queries.GetCapabilityStats;
 using BerexQms.Application.AiEngine.Queries.GetContextStats;
@@ -23,6 +26,10 @@ using BerexQms.Application.AiEngine.Queries.GetUserAiPermissions;
 using BerexQms.Application.AiEngine.Queries.ListAiActionLogs;
 using BerexQms.Application.AiEngine.Queries.ListCapabilityConfigs;
 using BerexQms.Application.AiEngine.Queries.ListInteractions;
+using BerexQms.Application.AiEngine.Queries.GetQualityInsights;
+using BerexQms.Application.AiEngine.Queries.GetRecommendationDetails;
+using BerexQms.Application.AiEngine.Queries.GetRecommendations;
+using BerexQms.Application.AiEngine.Queries.GetRiskSummary;
 using BerexQms.Application.AiEngine.Queries.ListKnowledgeSources;
 using BerexQms.Application.AiEngine.Queries.ListModels;
 using BerexQms.Application.AiEngine.Queries.ListWorkflowDefinitions;
@@ -436,6 +443,105 @@ public sealed class AiController : ControllerBase
 
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
     }
+
+    // ---- Recommendations ----
+
+    [HttpGet("recommendations")]
+    public async Task<IActionResult> GetRecommendations(
+        [FromQuery] string? recommendationType,
+        [FromQuery] string? status,
+        [FromQuery] string? severity,
+        [FromQuery] string? relatedModule,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new GetRecommendationsQuery(recommendationType, status, severity, relatedModule),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("recommendations/{id:guid}")]
+    public async Task<IActionResult> GetRecommendationDetails(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new GetRecommendationDetailsQuery(id), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : NotFound(new { error = result.Error.Message });
+    }
+
+    [HttpPost("recommendations")]
+    public async Task<IActionResult> CreateRecommendation(
+        [FromBody] CreateRecommendationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new CreateRecommendationCommand(
+                request.RecommendationType,
+                request.Title,
+                request.Description,
+                request.Severity,
+                request.RelatedModule,
+                request.RelatedEntityId,
+                request.ConfidenceScore,
+                request.Reason,
+                request.SupportingData,
+                request.RecommendedAction,
+                request.SourceContextIds),
+            cancellationToken);
+
+        return result.IsSuccess
+            ? CreatedAtAction(nameof(GetRecommendationDetails), new { id = result.Value }, new { id = result.Value })
+            : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("recommendations/{id:guid}/review")]
+    public async Task<IActionResult> ReviewRecommendation(
+        Guid id,
+        [FromBody] ReviewRecommendationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ReviewRecommendationCommand(id, request.Action, request.Notes),
+            cancellationToken);
+
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPost("recommendations/{id:guid}/dismiss")]
+    public async Task<IActionResult> DismissRecommendation(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new DismissRecommendationCommand(id), cancellationToken);
+
+        return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error.Message });
+    }
+
+    // ---- Quality Intelligence ----
+
+    [HttpGet("insights")]
+    public async Task<IActionResult> GetQualityInsights(
+        [FromQuery] string? module,
+        [FromQuery] string? analysisType,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new GetQualityInsightsQuery(module, analysisType), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("risk-summary")]
+    public async Task<IActionResult> GetRiskSummary(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetRiskSummaryQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
 }
 
 // ---- Request Records ----
@@ -475,3 +581,11 @@ public sealed record CreateContextDocumentRequest(
 
 public sealed record UpdateContextDocumentRequest(
     string Title, string Content, string? MetadataJson);
+
+public sealed record CreateRecommendationRequest(
+    string RecommendationType, string Title, string Description, string Severity,
+    string RelatedModule, string? RelatedEntityId, decimal ConfidenceScore,
+    string Reason, string? SupportingData, string? RecommendedAction,
+    string? SourceContextIds);
+
+public sealed record ReviewRecommendationRequest(string Action, string? Notes);

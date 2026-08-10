@@ -29,6 +29,8 @@ using BerexQms.Domain.Spc.Repositories;
 using BerexQms.Infrastructure.Spc.Repositories;
 using BerexQms.Application.AiEngine.Interfaces;
 using BerexQms.Domain.AiEngine.Repositories;
+using BerexQms.Infrastructure.AiEngine.Configuration;
+using BerexQms.Infrastructure.AiEngine.Providers;
 using BerexQms.Infrastructure.AiEngine.Repositories;
 using BerexQms.Infrastructure.AiEngine.Services;
 using BerexQms.Infrastructure.Services;
@@ -36,6 +38,8 @@ using BerexQms.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Minio;
 using StackExchange.Redis;
 
@@ -48,9 +52,40 @@ public static class DependencyInjection
         services.AddPersistence(configuration);
         services.AddRedisCache(configuration);
         services.AddMinioStorage(configuration);
+        services.AddAiProviders(configuration);
         services.AddInfrastructureServices();
 
         return services;
+    }
+
+    private static void AddAiProviders(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<AiProviderOptions>(configuration.GetSection(AiProviderOptions.SectionName));
+
+        // Register Claude provider with its own HttpClient
+        services.AddHttpClient<ClaudeAiProvider>();
+        services.AddScoped<IAiProvider, ClaudeAiProvider>(sp =>
+        {
+            var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = httpFactory.CreateClient(nameof(ClaudeAiProvider));
+            var options = sp.GetRequiredService<IOptions<AiProviderOptions>>();
+            var logger = sp.GetRequiredService<ILogger<ClaudeAiProvider>>();
+            return new ClaudeAiProvider(client, options, logger);
+        });
+
+        // Register OpenAI provider with its own HttpClient
+        services.AddHttpClient<OpenAiProvider>();
+        services.AddScoped<IAiProvider, OpenAiProvider>(sp =>
+        {
+            var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = httpFactory.CreateClient(nameof(OpenAiProvider));
+            var options = sp.GetRequiredService<IOptions<AiProviderOptions>>();
+            var logger = sp.GetRequiredService<ILogger<OpenAiProvider>>();
+            return new OpenAiProvider(client, options, logger);
+        });
+
+        // Register orchestrator
+        services.AddScoped<IAiOrchestrator, AiOrchestratorService>();
     }
 
     private static void AddPersistence(this IServiceCollection services, IConfiguration configuration)
@@ -178,5 +213,11 @@ public static class DependencyInjection
 
         services.AddScoped<IAiRecommendationRepository, AiRecommendationRepository>();
         services.AddScoped<IAiRecommendationService, AiRecommendationService>();
+
+        // Sprint 16: AI Provider Integration
+        services.AddScoped<IAiUsageRecordRepository, AiUsageRecordRepository>();
+        services.AddScoped<IAiPromptTemplateRepository, AiPromptTemplateRepository>();
+        services.AddScoped<IAiUsageService, AiUsageTrackingService>();
+        services.AddScoped<AiPromptTemplateManager>();
     }
 }

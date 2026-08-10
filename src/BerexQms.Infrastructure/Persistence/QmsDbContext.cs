@@ -87,6 +87,8 @@ public class QmsDbContext : DbContext, IUnitOfWork
     public DbSet<AiContextDocument> AiContextDocuments => Set<AiContextDocument>();
     public DbSet<AiKnowledgeSource> AiKnowledgeSources => Set<AiKnowledgeSource>();
     public DbSet<AiRecommendation> AiRecommendations => Set<AiRecommendation>();
+    public DbSet<AiUsageRecord> AiUsageRecords => Set<AiUsageRecord>();
+    public DbSet<AiPromptTemplate> AiPromptTemplates => Set<AiPromptTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

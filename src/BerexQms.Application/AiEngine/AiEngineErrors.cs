@@ -106,4 +106,34 @@ public static class AiEngineErrors
     public static readonly Error InvalidReviewAction = Error.Validation(
         "AiEngine.InvalidReviewAction",
         "Invalid review action. Valid values: accept, reject, review.");
+
+    // ---- Sprint 16: AI Provider Integration Errors ----
+
+    public static readonly Error AiProviderRequestFailed = Error.Failure(
+        "AiEngine.AiProviderRequestFailed",
+        "The AI provider request failed. Check provider status and configuration.");
+
+    public static readonly Error AiProviderNotConfigured = Error.Validation(
+        "AiEngine.AiProviderNotConfigured",
+        "No AI provider is configured for the requested task type.");
+
+    public static readonly Error AiProviderDisabled = Error.Validation(
+        "AiEngine.AiProviderDisabled",
+        "The AI provider for this task type is currently disabled.");
+
+    public static readonly Error InvalidAiTaskType = Error.Validation(
+        "AiEngine.InvalidAiTaskType",
+        "The specified AI task type is not recognized.");
+
+    public static readonly Error AiResponseValidationFailed = Error.Validation(
+        "AiEngine.AiResponseValidationFailed",
+        "The AI provider response failed validation and cannot be trusted.");
+
+    public static readonly Error PromptTemplateNotFound = Error.NotFound(
+        "AiEngine.PromptTemplateNotFound",
+        "No active prompt template found for the specified task type.");
+
+    public static readonly Error ContextSizeLimitExceeded = Error.Validation(
+        "AiEngine.ContextSizeLimitExceeded",
+        "The context package exceeds the maximum allowed size.");
 }

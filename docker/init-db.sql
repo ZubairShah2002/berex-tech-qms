@@ -1796,3 +1796,63 @@ CREATE POLICY tenant_isolation_ai_knowledge_sources ON ai_engine.ai_knowledge_so
 
 CREATE POLICY tenant_isolation_ai_recommendations ON ai_engine.ai_recommendations
     USING (tenant_id = shared.current_tenant_id());
+
+-- Sprint 16: AI Provider Integration
+
+CREATE TABLE ai_engine.ai_usage_records (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES identity.tenants(id),
+    provider VARCHAR(50) NOT NULL,
+    model VARCHAR(100) NOT NULL,
+    task_type VARCHAR(100) NOT NULL,
+    user_id UUID,
+    input_tokens INT NOT NULL DEFAULT 0,
+    output_tokens INT NOT NULL DEFAULT 0,
+    total_tokens INT NOT NULL DEFAULT 0,
+    estimated_cost_usd NUMERIC(10, 6),
+    processing_time_ms BIGINT NOT NULL DEFAULT 0,
+    success BOOLEAN NOT NULL DEFAULT TRUE,
+    error_category VARCHAR(100),
+    error_detail VARCHAR(2000),
+    recommendation_id UUID,
+    context_document_ids VARCHAR(2000),
+    was_fallback BOOLEAN NOT NULL DEFAULT FALSE,
+    fallback_from_provider VARCHAR(50),
+    created_by VARCHAR(256),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by VARCHAR(256),
+    modified_at TIMESTAMPTZ
+);
+
+CREATE INDEX ix_ai_usage_records_tenant_provider ON ai_engine.ai_usage_records(tenant_id, provider);
+CREATE INDEX ix_ai_usage_records_tenant_task ON ai_engine.ai_usage_records(tenant_id, task_type);
+CREATE INDEX ix_ai_usage_records_tenant_created ON ai_engine.ai_usage_records(tenant_id, created_at);
+
+ALTER TABLE ai_engine.ai_usage_records ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE ai_engine.ai_prompt_templates (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES identity.tenants(id),
+    task_type VARCHAR(100) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    description VARCHAR(1000),
+    system_prompt TEXT NOT NULL,
+    user_prompt_template TEXT NOT NULL,
+    output_schema TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    version INT NOT NULL DEFAULT 1,
+    created_by VARCHAR(256),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by VARCHAR(256),
+    modified_at TIMESTAMPTZ
+);
+
+CREATE INDEX ix_ai_prompt_templates_tenant_task_active ON ai_engine.ai_prompt_templates(tenant_id, task_type, is_active);
+
+ALTER TABLE ai_engine.ai_prompt_templates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_ai_usage_records ON ai_engine.ai_usage_records
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE POLICY tenant_isolation_ai_prompt_templates ON ai_engine.ai_prompt_templates
+    USING (tenant_id = shared.current_tenant_id());

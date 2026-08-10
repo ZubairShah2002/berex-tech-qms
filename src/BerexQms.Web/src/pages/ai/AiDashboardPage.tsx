@@ -230,6 +230,12 @@ interface AiProviderStatusDto {
   lastErrorMessage: string | null
   lastSuccessAt: string | null
   lastErrorAt: string | null
+  hasApiCost: boolean
+}
+
+interface AiLocalModelDto {
+  name: string
+  available: boolean
 }
 
 interface AiTaskMappingDto {
@@ -249,6 +255,11 @@ interface AiUsageSummaryDto {
   averageProcessingTimeMs: number
   usageByProvider: AiUsageByProviderDto[]
   usageByTaskType: AiUsageByTaskTypeDto[]
+  localRequests: number
+  cloudRequests: number
+  localUsagePercent: number
+  cloudUsagePercent: number
+  estimatedAvoidedApiCostUsd: number
 }
 
 interface AiUsageByProviderDto {
@@ -259,13 +270,14 @@ interface AiUsageByProviderDto {
   totalTokens: number
   estimatedCostUsd: number
   averageProcessingTimeMs: number
+  successRate: number
+  fallbackCount: number
 }
 
 interface AiUsageByTaskTypeDto {
   taskType: string
   requestCount: number
-  successCount: number
-  averageTokens: number
+  totalTokens: number
   averageProcessingTimeMs: number
 }
 
@@ -618,6 +630,12 @@ export function AiDashboardPage() {
   const usageSummaryQuery = useQuery({
     queryKey: ['ai', 'usageSummary'],
     queryFn: () => apiClient.get<AiUsageSummaryDto>('/api/v1/ai/usage/summary').then(r => r.data),
+    enabled: activeTab === 'providers',
+  })
+
+  const localModelsQuery = useQuery({
+    queryKey: ['ai', 'localModels'],
+    queryFn: () => apiClient.get<AiLocalModelDto[]>('/api/v1/ai/providers/local/models').then(r => r.data),
     enabled: activeTab === 'providers',
   })
 
@@ -1648,7 +1666,7 @@ export function AiDashboardPage() {
     )
   }
 
-  // ---- Providers tab (Sprint 16) ----
+  // ---- Providers tab (Sprint 16 + Sprint 17) ----
 
   function renderProviders() {
     const statusLoading = providerStatusQuery.isLoading
@@ -1658,6 +1676,7 @@ export function AiDashboardPage() {
     const providers = providerStatusQuery.data ?? []
     const mappings = taskMappingsQuery.data ?? []
     const usage = usageSummaryQuery.data
+    const localModels = localModelsQuery.data ?? []
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
@@ -1680,7 +1699,12 @@ export function AiDashboardPage() {
                 <div key={p.provider} className={styles.capabilityCard}>
                   <div className={styles.capabilityHeader}>
                     <h4 className={styles.capabilityName}>{p.provider}</h4>
-                    <StatusBadge status={p.isHealthy ? 'Healthy' : p.isEnabled ? 'Degraded' : 'Disabled'} />
+                    <div style={{ display: 'flex', gap: 'var(--spacing-2)', alignItems: 'center' }}>
+                      {!p.hasApiCost && (
+                        <span className={styles.tag} style={{ fontSize: 'var(--font-size-xs)' }}>No API Cost</span>
+                      )}
+                      <StatusBadge status={p.isHealthy ? 'Healthy' : p.isEnabled ? 'Degraded' : 'Disabled'} />
+                    </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
                     <div className={styles.thresholdBar}>
@@ -1698,6 +1722,10 @@ export function AiDashboardPage() {
                     <div className={styles.thresholdBar}>
                       <span className={styles.thresholdLabel}>Status</span>
                       <span className={styles.thresholdValue}>{p.isEnabled ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                    <div className={styles.thresholdBar}>
+                      <span className={styles.thresholdLabel}>Cost Type</span>
+                      <span className={styles.thresholdValue}>{p.hasApiCost ? 'Paid API' : 'Local (no API cost)'}</span>
                     </div>
                   </div>
                   {p.supportedTaskTypes.length > 0 && (
@@ -1725,11 +1753,40 @@ export function AiDashboardPage() {
           )}
         </div>
 
+        {/* Local Models (Sprint 17) */}
+        {providers.some(p => p.provider === 'Local' && p.isEnabled) && (
+          <div className={styles.section}>
+            <h3 className={styles.sectionTitle}>Local Models</h3>
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+              Models installed on the local inference server.
+            </p>
+            {localModelsQuery.isLoading ? (
+              <div className={styles.loadingSkeleton} style={{ height: 80 }} />
+            ) : localModels.length === 0 ? (
+              <div className={styles.emptyState}>
+                <Server size={32} className={styles.emptyIcon} />
+                <p>No local models detected. The local inference server may be unavailable.</p>
+              </div>
+            ) : (
+              <div className={styles.sourcesList}>
+                {localModels.map(m => (
+                  <div key={m.name} className={styles.sourceCard}>
+                    <div className={styles.sourceHeader}>
+                      <h4 className={styles.sourceName}>{m.name}</h4>
+                      <StatusBadge status={m.available ? 'Available' : 'Unavailable'} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Task Mappings */}
         <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Task–Provider Mappings</h3>
+          <h3 className={styles.sectionTitle}>Task–Provider Routing</h3>
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
-            Which provider handles each AI task type, with optional fallback.
+            Provider chain for each AI task type. Requests follow the primary provider first, then fall back in order.
           </p>
           {mappingsLoading ? (
             <div className={styles.loadingSkeleton} style={{ height: 100 }} />
@@ -1748,7 +1805,7 @@ export function AiDashboardPage() {
                   <div className={styles.sourceMeta}>
                     <span>Primary: <strong>{m.primaryProvider}</strong></span>
                     {m.fallbackProvider && (
-                      <span>Fallback: <strong>{m.fallbackProvider}</strong></span>
+                      <span>Fallback chain: <strong>{m.fallbackProvider}</strong></span>
                     )}
                     {!m.fallbackProvider && (
                       <span style={{ color: 'var(--color-text-secondary)' }}>No fallback</span>
@@ -1798,13 +1855,45 @@ export function AiDashboardPage() {
                 </div>
                 <div className={styles.statCard}>
                   <p className={styles.statValue}>${usage.totalEstimatedCostUsd.toFixed(4)}</p>
-                  <p className={styles.statLabel}>Est. Cost</p>
+                  <p className={styles.statLabel}>Est. API Cost</p>
                 </div>
                 <div className={styles.statCard}>
                   <p className={styles.statValue}>{usage.averageProcessingTimeMs.toFixed(0)}ms</p>
                   <p className={styles.statLabel}>Avg Response</p>
                 </div>
               </div>
+
+              {/* Cost Optimization (Sprint 17) */}
+              {usage.totalRequests > 0 && (
+                <div style={{ marginTop: 'var(--spacing-5)' }}>
+                  <h4 className={styles.subsectionTitle}>Cost Optimization</h4>
+                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-3)' }}>
+                    Local vs cloud provider distribution. Local inference has zero API cost — infrastructure costs (hardware, electricity) are not tracked here.
+                  </p>
+                  <div className={styles.riskStatsGrid}>
+                    <div className={styles.statCard}>
+                      <p className={styles.statValue}>{usage.localRequests}</p>
+                      <p className={styles.statLabel}>Local Requests</p>
+                    </div>
+                    <div className={styles.statCard}>
+                      <p className={styles.statValue}>{usage.cloudRequests}</p>
+                      <p className={styles.statLabel}>Cloud Requests</p>
+                    </div>
+                    <div className={styles.statCard}>
+                      <p className={styles.statValue}>{usage.localUsagePercent.toFixed(1)}%</p>
+                      <p className={styles.statLabel}>Local Usage</p>
+                    </div>
+                    <div className={styles.statCard}>
+                      <p className={styles.statValue}>{usage.cloudUsagePercent.toFixed(1)}%</p>
+                      <p className={styles.statLabel}>Cloud Usage</p>
+                    </div>
+                    <div className={styles.statCard}>
+                      <p className={styles.statValue}>${usage.estimatedAvoidedApiCostUsd.toFixed(4)}</p>
+                      <p className={styles.statLabel}>Est. Avoided API Cost</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Usage by Provider */}
               {usage.usageByProvider.length > 0 && (
@@ -1818,8 +1907,9 @@ export function AiDashboardPage() {
                           <span className={styles.riskModuleCount}>{up.requestCount} req</span>
                         </div>
                         <div className={styles.sourceMeta} style={{ marginTop: 'var(--spacing-1)' }}>
-                          <span>{up.successCount} ok</span>
+                          <span>{up.successCount} ok ({up.successRate.toFixed(1)}%)</span>
                           <span>{up.failedCount} failed</span>
+                          <span>{up.fallbackCount} fallback</span>
                           <span>{up.totalTokens.toLocaleString()} tokens</span>
                           <span>${up.estimatedCostUsd.toFixed(4)}</span>
                           <span>{up.averageProcessingTimeMs.toFixed(0)}ms avg</span>
@@ -1840,7 +1930,7 @@ export function AiDashboardPage() {
                         <span className={styles.riskTypeName}>{taskTypeLabels[ut.taskType] ?? ut.taskType}</span>
                         <span className={styles.riskTypeCount}>{ut.requestCount}</span>
                         <span className={styles.riskTypeConfidence}>
-                          {ut.successCount} ok · {ut.averageTokens.toLocaleString()} avg tokens · {ut.averageProcessingTimeMs.toFixed(0)}ms avg
+                          {ut.averageProcessingTimeMs.toFixed(0)}ms avg
                         </span>
                       </div>
                     ))}

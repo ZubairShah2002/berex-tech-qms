@@ -27,6 +27,13 @@ public interface IAiOrchestrator
 
     /// <summary>Get current task-to-provider mappings.</summary>
     IReadOnlyList<AiTaskMappingDto> GetTaskMappings();
+
+    /// <summary>
+    /// List models available on the Local AI provider.
+    /// Returns an empty list if the Local provider is disabled or unreachable.
+    /// </summary>
+    Task<IReadOnlyList<AiLocalModelDto>> GetLocalModelsAsync(
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

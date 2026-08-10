@@ -9,4 +9,5 @@ public enum AiProviderType
 {
     Claude = 1,
     OpenAi = 2,
+    Local = 3,
 }

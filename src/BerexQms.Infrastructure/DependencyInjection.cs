@@ -31,6 +31,7 @@ using BerexQms.Application.AiEngine.Interfaces;
 using BerexQms.Domain.AiEngine.Repositories;
 using BerexQms.Infrastructure.AiEngine.Configuration;
 using BerexQms.Infrastructure.AiEngine.Providers;
+using BerexQms.Infrastructure.AiEngine.Providers.Local;
 using BerexQms.Infrastructure.AiEngine.Repositories;
 using BerexQms.Infrastructure.AiEngine.Services;
 using BerexQms.Infrastructure.Services;
@@ -83,6 +84,18 @@ public static class DependencyInjection
             var logger = sp.GetRequiredService<ILogger<OpenAiProvider>>();
             return new OpenAiProvider(client, options, logger);
         });
+
+        // Register Local AI (Ollama) provider with its own HttpClient
+        services.AddHttpClient<OllamaClient>();
+        services.AddScoped<OllamaClient>(sp =>
+        {
+            var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = httpFactory.CreateClient(nameof(OllamaClient));
+            var options = sp.GetRequiredService<IOptions<AiProviderOptions>>();
+            var logger = sp.GetRequiredService<ILogger<OllamaClient>>();
+            return new OllamaClient(client, options, logger);
+        });
+        services.AddScoped<IAiProvider, LocalAiProvider>();
 
         // Register orchestrator
         services.AddScoped<IAiOrchestrator, AiOrchestratorService>();

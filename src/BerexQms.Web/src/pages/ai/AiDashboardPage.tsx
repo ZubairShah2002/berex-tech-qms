@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle, Database, Search, TrendingUp, BarChart3, CheckCircle, XCircle, Eye } from 'lucide-react'
+import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle, Database, Search, TrendingUp, BarChart3, CheckCircle, XCircle, Eye, Server, Gauge } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { DataTable } from '@/components/ui/DataTable'
@@ -217,9 +217,61 @@ interface RiskByTypeDto {
   averageConfidence: number
 }
 
+// Sprint 16: AI Provider Integration types
+
+interface AiProviderStatusDto {
+  provider: string
+  isEnabled: boolean
+  isHealthy: boolean
+  model: string
+  timeoutSeconds: number
+  maxRetries: number
+  supportedTaskTypes: string[]
+  lastErrorMessage: string | null
+  lastSuccessAt: string | null
+  lastErrorAt: string | null
+}
+
+interface AiTaskMappingDto {
+  taskType: string
+  primaryProvider: string
+  fallbackProvider: string | null
+}
+
+interface AiUsageSummaryDto {
+  totalRequests: number
+  successfulRequests: number
+  failedRequests: number
+  fallbackRequests: number
+  totalInputTokens: number
+  totalOutputTokens: number
+  totalEstimatedCostUsd: number
+  averageProcessingTimeMs: number
+  usageByProvider: AiUsageByProviderDto[]
+  usageByTaskType: AiUsageByTaskTypeDto[]
+}
+
+interface AiUsageByProviderDto {
+  provider: string
+  requestCount: number
+  successCount: number
+  failedCount: number
+  totalTokens: number
+  estimatedCostUsd: number
+  averageProcessingTimeMs: number
+}
+
+interface AiUsageByTaskTypeDto {
+  taskType: string
+  requestCount: number
+  successCount: number
+  averageTokens: number
+  averageProcessingTimeMs: number
+}
+
 // ---- Constants --------------------------------------------------------------
 
-type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows' | 'knowledgeContext' | 'aiInsights'
+type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows' | 'knowledgeContext' | 'aiInsights' | 'providers'
 
 const capabilityLabels: Record<string, string> = {
   DefectPrediction: 'Defect Prediction',
@@ -370,6 +422,19 @@ const insightModuleOptions = [
   { value: 'Training', label: 'Training' },
   { value: 'Spc', label: 'SPC' },
 ]
+
+const taskTypeLabels: Record<string, string> = {
+  DocumentAnalysis: 'Document Analysis',
+  QualityAnalysis: 'Quality Analysis',
+  RecommendationGeneration: 'Recommendation',
+  Summarization: 'Summarization',
+  RiskAnalysis: 'Risk Analysis',
+  CAPAAnalysis: 'CAPA Analysis',
+  SupplierAnalysis: 'Supplier Analysis',
+  AuditAnalysis: 'Audit Analysis',
+  DefectTrendAnalysis: 'Defect Trend',
+  StructuredDataExtraction: 'Data Extraction',
+}
 
 const permissionLevelDescriptions: Record<string, string> = {
   Assistant: 'Read-only AI access. View predictions, suggestions, and reports.',
@@ -535,6 +600,25 @@ export function AiDashboardPage() {
       return apiClient.get<QualityInsightDto[]>(`/api/v1/ai/insights?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'aiInsights',
+  })
+
+  // Sprint 16: Provider queries
+  const providerStatusQuery = useQuery({
+    queryKey: ['ai', 'providerStatus'],
+    queryFn: () => apiClient.get<AiProviderStatusDto[]>('/api/v1/ai/providers/status').then(r => r.data),
+    enabled: activeTab === 'providers',
+  })
+
+  const taskMappingsQuery = useQuery({
+    queryKey: ['ai', 'taskMappings'],
+    queryFn: () => apiClient.get<AiTaskMappingDto[]>('/api/v1/ai/providers/task-mappings').then(r => r.data),
+    enabled: activeTab === 'providers',
+  })
+
+  const usageSummaryQuery = useQuery({
+    queryKey: ['ai', 'usageSummary'],
+    queryFn: () => apiClient.get<AiUsageSummaryDto>('/api/v1/ai/usage/summary').then(r => r.data),
+    enabled: activeTab === 'providers',
   })
 
   // ---- Mutations ----
@@ -1564,6 +1648,212 @@ export function AiDashboardPage() {
     )
   }
 
+  // ---- Providers tab (Sprint 16) ----
+
+  function renderProviders() {
+    const statusLoading = providerStatusQuery.isLoading
+    const mappingsLoading = taskMappingsQuery.isLoading
+    const usageLoading = usageSummaryQuery.isLoading
+
+    const providers = providerStatusQuery.data ?? []
+    const mappings = taskMappingsQuery.data ?? []
+    const usage = usageSummaryQuery.data
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+        {/* Provider Status */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Provider Status</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Configured AI providers and their current operational status.
+          </p>
+          {statusLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 200 }} />
+          ) : providers.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Server size={48} className={styles.emptyIcon} />
+              <p>No AI providers configured.</p>
+            </div>
+          ) : (
+            <div className={styles.capabilitiesGrid}>
+              {providers.map(p => (
+                <div key={p.provider} className={styles.capabilityCard}>
+                  <div className={styles.capabilityHeader}>
+                    <h4 className={styles.capabilityName}>{p.provider}</h4>
+                    <StatusBadge status={p.isHealthy ? 'Healthy' : p.isEnabled ? 'Degraded' : 'Disabled'} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-2)' }}>
+                    <div className={styles.thresholdBar}>
+                      <span className={styles.thresholdLabel}>Model</span>
+                      <span className={styles.thresholdValue}>{p.model}</span>
+                    </div>
+                    <div className={styles.thresholdBar}>
+                      <span className={styles.thresholdLabel}>Timeout</span>
+                      <span className={styles.thresholdValue}>{p.timeoutSeconds}s</span>
+                    </div>
+                    <div className={styles.thresholdBar}>
+                      <span className={styles.thresholdLabel}>Max Retries</span>
+                      <span className={styles.thresholdValue}>{p.maxRetries}</span>
+                    </div>
+                    <div className={styles.thresholdBar}>
+                      <span className={styles.thresholdLabel}>Status</span>
+                      <span className={styles.thresholdValue}>{p.isEnabled ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                  </div>
+                  {p.supportedTaskTypes.length > 0 && (
+                    <div style={{ marginTop: 'var(--spacing-2)' }}>
+                      <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-secondary)', fontWeight: 500 }}>Supported Tasks</span>
+                      <div className={styles.tagList} style={{ marginTop: 'var(--spacing-1)' }}>
+                        {p.supportedTaskTypes.map(t => (
+                          <span key={t} className={styles.tag}>{taskTypeLabels[t] ?? t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {p.lastErrorMessage && (
+                    <div style={{ marginTop: 'var(--spacing-2)', fontSize: 'var(--font-size-xs)', color: 'var(--color-error)' }}>
+                      Last error: {p.lastErrorMessage}
+                    </div>
+                  )}
+                  <div className={styles.workflowMeta} style={{ marginTop: 'var(--spacing-2)' }}>
+                    {p.lastSuccessAt && <span>Last success: {formatDate(p.lastSuccessAt)}</span>}
+                    {p.lastErrorAt && <span>Last error: {formatDate(p.lastErrorAt)}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Task Mappings */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Task–Provider Mappings</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Which provider handles each AI task type, with optional fallback.
+          </p>
+          {mappingsLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 100 }} />
+          ) : mappings.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Gauge size={48} className={styles.emptyIcon} />
+              <p>No task mappings configured.</p>
+            </div>
+          ) : (
+            <div className={styles.sourcesList}>
+              {mappings.map(m => (
+                <div key={m.taskType} className={styles.sourceCard}>
+                  <div className={styles.sourceHeader}>
+                    <h4 className={styles.sourceName}>{taskTypeLabels[m.taskType] ?? m.taskType}</h4>
+                  </div>
+                  <div className={styles.sourceMeta}>
+                    <span>Primary: <strong>{m.primaryProvider}</strong></span>
+                    {m.fallbackProvider && (
+                      <span>Fallback: <strong>{m.fallbackProvider}</strong></span>
+                    )}
+                    {!m.fallbackProvider && (
+                      <span style={{ color: 'var(--color-text-secondary)' }}>No fallback</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Usage Summary */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Usage Summary</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Aggregate AI provider usage, token consumption, and cost tracking.
+          </p>
+          {usageLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 200 }} />
+          ) : !usage ? (
+            <div className={styles.emptyState}>
+              <BarChart3 size={48} className={styles.emptyIcon} />
+              <p>No usage data available yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className={styles.riskStatsGrid}>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{usage.totalRequests}</p>
+                  <p className={styles.statLabel}>Total Requests</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{usage.successfulRequests}</p>
+                  <p className={styles.statLabel}>Successful</p>
+                </div>
+                <div className={`${styles.statCard} ${usage.failedRequests > 0 ? styles.riskStatHigh : ''}`}>
+                  <p className={styles.statValue}>{usage.failedRequests}</p>
+                  <p className={styles.statLabel}>Failed</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{usage.fallbackRequests}</p>
+                  <p className={styles.statLabel}>Fallback</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{(usage.totalInputTokens + usage.totalOutputTokens).toLocaleString()}</p>
+                  <p className={styles.statLabel}>Total Tokens</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>${usage.totalEstimatedCostUsd.toFixed(4)}</p>
+                  <p className={styles.statLabel}>Est. Cost</p>
+                </div>
+                <div className={styles.statCard}>
+                  <p className={styles.statValue}>{usage.averageProcessingTimeMs.toFixed(0)}ms</p>
+                  <p className={styles.statLabel}>Avg Response</p>
+                </div>
+              </div>
+
+              {/* Usage by Provider */}
+              {usage.usageByProvider.length > 0 && (
+                <div style={{ marginTop: 'var(--spacing-5)' }}>
+                  <h4 className={styles.subsectionTitle}>Usage by Provider</h4>
+                  <div className={styles.riskModuleGrid}>
+                    {usage.usageByProvider.map(up => (
+                      <div key={up.provider} className={styles.riskModuleCard}>
+                        <div className={styles.riskModuleHeader}>
+                          <span className={styles.riskModuleName}>{up.provider}</span>
+                          <span className={styles.riskModuleCount}>{up.requestCount} req</span>
+                        </div>
+                        <div className={styles.sourceMeta} style={{ marginTop: 'var(--spacing-1)' }}>
+                          <span>{up.successCount} ok</span>
+                          <span>{up.failedCount} failed</span>
+                          <span>{up.totalTokens.toLocaleString()} tokens</span>
+                          <span>${up.estimatedCostUsd.toFixed(4)}</span>
+                          <span>{up.averageProcessingTimeMs.toFixed(0)}ms avg</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Usage by Task Type */}
+              {usage.usageByTaskType.length > 0 && (
+                <div style={{ marginTop: 'var(--spacing-5)' }}>
+                  <h4 className={styles.subsectionTitle}>Usage by Task Type</h4>
+                  <div className={styles.riskTypeGrid}>
+                    {usage.usageByTaskType.map(ut => (
+                      <div key={ut.taskType} className={styles.riskTypeCard}>
+                        <span className={styles.riskTypeName}>{taskTypeLabels[ut.taskType] ?? ut.taskType}</span>
+                        <span className={styles.riskTypeCount}>{ut.requestCount}</span>
+                        <span className={styles.riskTypeConfidence}>
+                          {ut.successCount} ok · {ut.averageTokens.toLocaleString()} avg tokens · {ut.averageProcessingTimeMs.toFixed(0)}ms avg
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   // ---- Confirmation Dialog ----
 
   function renderConfirmationDialog() {
@@ -1681,6 +1971,10 @@ export function AiDashboardPage() {
           <TrendingUp size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
           AI Insights
         </button>
+        <button className={`${styles.tab} ${activeTab === 'providers' ? styles.tabActive : ''}`} onClick={() => setActiveTab('providers')}>
+          <Server size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          Providers
+        </button>
       </div>
 
       {activeTab === 'capabilities' && renderCapabilities()}
@@ -1691,6 +1985,7 @@ export function AiDashboardPage() {
       {activeTab === 'workflows' && renderWorkflows()}
       {activeTab === 'knowledgeContext' && renderKnowledgeContext()}
       {activeTab === 'aiInsights' && renderAiInsights()}
+      {activeTab === 'providers' && renderProviders()}
 
       {renderConfirmationDialog()}
     </div>

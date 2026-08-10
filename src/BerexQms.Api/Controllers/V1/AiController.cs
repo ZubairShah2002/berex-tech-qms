@@ -31,10 +31,14 @@ using BerexQms.Application.AiEngine.Queries.GetRecommendationDetails;
 using BerexQms.Application.AiEngine.Queries.GetRecommendations;
 using BerexQms.Application.AiEngine.Queries.GetRiskSummary;
 using BerexQms.Application.AiEngine.Queries.ListKnowledgeSources;
+using BerexQms.Application.AiEngine.Queries.GetAiProviderStatus;
+using BerexQms.Application.AiEngine.Queries.GetAiTaskMappings;
+using BerexQms.Application.AiEngine.Queries.GetAiUsageSummary;
 using BerexQms.Application.AiEngine.Queries.ListModels;
 using BerexQms.Application.AiEngine.Queries.ListWorkflowDefinitions;
 using BerexQms.Application.AiEngine.Queries.ListWorkflowExecutions;
 using BerexQms.Application.AiEngine.Queries.SearchKnowledgeContext;
+using BerexQms.Application.AiEngine.Commands.ExecuteAiAnalysis;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -521,6 +525,49 @@ public sealed class AiController : ControllerBase
         return result.IsSuccess ? NoContent() : BadRequest(new { error = result.Error.Message });
     }
 
+    // ---- AI Provider Integration (Sprint 16) ----
+
+    [HttpPost("analyze")]
+    public async Task<IActionResult> ExecuteAnalysis(
+        [FromBody] ExecuteAnalysisRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new ExecuteAiAnalysisCommand(
+                request.TaskType,
+                request.Module,
+                request.Content,
+                request.EntityId,
+                request.MaxContextDocuments),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("providers/status")]
+    public async Task<IActionResult> GetProviderStatus(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetAiProviderStatusQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("providers/task-mappings")]
+    public async Task<IActionResult> GetTaskMappings(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetAiTaskMappingsQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("usage/summary")]
+    public async Task<IActionResult> GetUsageSummary(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetAiUsageSummaryQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
     // ---- Quality Intelligence ----
 
     [HttpGet("insights")]
@@ -589,3 +636,7 @@ public sealed record CreateRecommendationRequest(
     string? SourceContextIds);
 
 public sealed record ReviewRecommendationRequest(string Action, string? Notes);
+
+public sealed record ExecuteAnalysisRequest(
+    string TaskType, string? Module, string Content,
+    string? EntityId, int MaxContextDocuments = 10);

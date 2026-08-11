@@ -36,4 +36,23 @@ internal sealed class AiUsageRecordRepository
             .Take(count)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<int> CountUserRequestsTodayAsync(
+        Guid userId, CancellationToken cancellationToken)
+    {
+        var todayUtc = DateTime.UtcNow.Date;
+        return await DbSet
+            .Where(r => r.UserId == userId && r.CreatedAt >= todayUtc)
+            .CountAsync(cancellationToken);
+    }
+
+    public async Task<int> CountTenantRequestsThisMonthAsync(
+        Guid tenantId, CancellationToken cancellationToken)
+    {
+        var monthStartUtc = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var tenantIdVo = BerexQms.SharedKernel.ValueObjects.TenantId.From(tenantId);
+        return await DbSet
+            .Where(r => r.TenantId == tenantIdVo && r.CreatedAt >= monthStartUtc)
+            .CountAsync(cancellationToken);
+    }
 }

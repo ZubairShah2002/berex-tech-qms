@@ -12,16 +12,17 @@ namespace BerexQms.Infrastructure.AiEngine.Services;
 /// AI Orchestrator — the central coordination point for all AI reasoning requests.
 ///
 /// Flow:
-/// 1. Determine task type
-/// 2. Resolve provider routing chain (primary → fallback1 → fallback2)
-/// 3. Retrieve relevant QMS context (via context service)
-/// 4. Build prompts (via prompt template manager)
-/// 5. Validate context size (provider-aware limits)
-/// 6. Call primary provider
-/// 7. Validate response
-/// 8. Walk fallback chain on technical failure
-/// 9. Record usage
-/// 10. Return normalized result
+/// 1. Validate governance (AI enabled, task permitted, usage limits)
+/// 2. Determine task type
+/// 3. Resolve provider routing chain (governance-filtered, preference-aware)
+/// 4. Retrieve relevant QMS context (via context service)
+/// 5. Build prompts (via prompt template manager)
+/// 6. Validate context size (provider-aware limits)
+/// 7. Call primary provider
+/// 8. Validate response
+/// 9. Walk fallback chain on technical failure
+/// 10. Record usage
+/// 11. Return normalized result
 ///
 /// The orchestrator NEVER allows AI to directly modify the database,
 /// bypass permissions, or execute application commands.
@@ -31,6 +32,7 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
     private readonly IReadOnlyDictionary<string, IAiProvider> _providers;
     private readonly IAiContextService _contextService;
     private readonly IAiUsageService _usageService;
+    private readonly IAiGovernanceService? _governanceService;
     private readonly AiPromptTemplateManager _promptManager;
     private readonly AiProviderOptions _options;
     private readonly ILogger<AiOrchestratorService> _logger;
@@ -41,11 +43,13 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
         IAiUsageService usageService,
         AiPromptTemplateManager promptManager,
         IOptions<AiProviderOptions> options,
-        ILogger<AiOrchestratorService> logger)
+        ILogger<AiOrchestratorService> logger,
+        IAiGovernanceService? governanceService = null)
     {
         _providers = providers.ToDictionary(p => p.ProviderName, p => p);
         _contextService = contextService;
         _usageService = usageService;
+        _governanceService = governanceService;
         _promptManager = promptManager;
         _options = options.Value;
         _logger = logger;
@@ -54,8 +58,42 @@ internal sealed class AiOrchestratorService : IAiOrchestrator
     public async Task<AiProviderResponseDto> ExecuteAsync(
         AiOrchestratorRequest request, CancellationToken ct)
     {
+        // 0. Governance validation (Sprint 18)
+        if (_governanceService != null && request.UserId.HasValue)
+        {
+            var governanceResult = await _governanceService.ValidateAiAccessAsync(
+                request.UserId.Value, request.TaskType, ct);
+
+            if (!governanceResult.IsSuccess)
+            {
+                return FailedResponse(
+                    "GovernanceDenied",
+                    governanceResult.Error.Message);
+            }
+        }
+
         // 1. Resolve ordered provider chain for this task type
         var providerChain = ResolveProviderChain(request.TaskType);
+
+        // 1b. Filter providers by governance policy (Sprint 18)
+        if (_governanceService != null)
+        {
+            providerChain = await _governanceService.FilterAllowedProvidersAsync(providerChain, ct);
+        }
+
+        // 1c. Apply user preferred provider (Sprint 18)
+        if (_governanceService != null && request.UserId.HasValue)
+        {
+            var preferredProvider = await _governanceService.ResolvePreferredProviderAsync(
+                request.UserId.Value, ct);
+
+            if (preferredProvider != null && providerChain.Contains(preferredProvider))
+            {
+                // Move preferred provider to the front of the chain
+                providerChain.Remove(preferredProvider);
+                providerChain.Insert(0, preferredProvider);
+            }
+        }
 
         if (providerChain.Count == 0)
         {

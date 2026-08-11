@@ -1856,3 +1856,50 @@ CREATE POLICY tenant_isolation_ai_usage_records ON ai_engine.ai_usage_records
 
 CREATE POLICY tenant_isolation_ai_prompt_templates ON ai_engine.ai_prompt_templates
     USING (tenant_id = shared.current_tenant_id());
+
+-- Sprint 18: AI User Preferences & Governance tables
+
+CREATE TABLE IF NOT EXISTS ai_engine.ai_user_preferences (
+    id              UUID PRIMARY KEY,
+    tenant_id       UUID NOT NULL REFERENCES identity.tenants(id),
+    user_id         UUID NOT NULL,
+    is_ai_enabled   BOOLEAN NOT NULL DEFAULT TRUE,
+    preferred_provider VARCHAR(100),
+    require_confirmation_for_recommendations BOOLEAN NOT NULL DEFAULT TRUE,
+    preferred_language VARCHAR(10),
+    enabled_task_types_json JSONB,
+    created_by      VARCHAR(256),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by     VARCHAR(256),
+    modified_at     TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX ix_ai_user_preferences_tenant_user ON ai_engine.ai_user_preferences(tenant_id, user_id);
+
+ALTER TABLE ai_engine.ai_user_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_ai_user_preferences ON ai_engine.ai_user_preferences
+    USING (tenant_id = shared.current_tenant_id());
+
+CREATE TABLE IF NOT EXISTS ai_engine.ai_governance_policies (
+    id              UUID PRIMARY KEY,
+    tenant_id       UUID NOT NULL REFERENCES identity.tenants(id),
+    is_ai_enabled   BOOLEAN NOT NULL DEFAULT TRUE,
+    allowed_providers_json JSONB,
+    default_provider VARCHAR(100),
+    allowed_task_types_json JSONB,
+    max_daily_requests_per_user INT,
+    max_monthly_requests_per_tenant INT,
+    require_human_confirmation BOOLEAN NOT NULL DEFAULT TRUE,
+    created_by      VARCHAR(256),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    modified_by     VARCHAR(256),
+    modified_at     TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX ix_ai_governance_policies_tenant ON ai_engine.ai_governance_policies(tenant_id);
+
+ALTER TABLE ai_engine.ai_governance_policies ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_ai_governance_policies ON ai_engine.ai_governance_policies
+    USING (tenant_id = shared.current_tenant_id());

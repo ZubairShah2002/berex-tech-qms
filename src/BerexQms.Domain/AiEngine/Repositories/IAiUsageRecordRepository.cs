@@ -13,4 +13,12 @@ public interface IAiUsageRecordRepository : IRepository<AiUsageRecord>
 
     Task<IReadOnlyList<AiUsageRecord>> GetRecentAsync(
         int count, CancellationToken cancellationToken = default);
+
+    /// <summary>Count AI requests by a specific user today (UTC).</summary>
+    Task<int> CountUserRequestsTodayAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Count AI requests for the tenant this calendar month (UTC).</summary>
+    Task<int> CountTenantRequestsThisMonthAsync(
+        Guid tenantId, CancellationToken cancellationToken = default);
 }

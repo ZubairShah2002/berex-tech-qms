@@ -40,6 +40,11 @@ using BerexQms.Application.AiEngine.Queries.ListWorkflowDefinitions;
 using BerexQms.Application.AiEngine.Queries.ListWorkflowExecutions;
 using BerexQms.Application.AiEngine.Queries.SearchKnowledgeContext;
 using BerexQms.Application.AiEngine.Commands.ExecuteAiAnalysis;
+using BerexQms.Application.AiEngine.Commands.UpdateUserPreferences;
+using BerexQms.Application.AiEngine.Commands.UpdateGovernancePolicy;
+using BerexQms.Application.AiEngine.Queries.GetUserPreferences;
+using BerexQms.Application.AiEngine.Queries.GetGovernancePolicy;
+using BerexQms.Application.AiEngine.Queries.GetEffectivePolicy;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -599,6 +604,72 @@ public sealed class AiController : ControllerBase
 
         return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
     }
+
+    // ---- Sprint 18: AI Governance & User Preferences ----
+
+    [HttpGet("preferences")]
+    public async Task<IActionResult> GetUserPreferences(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetUserPreferencesQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPut("preferences")]
+    public async Task<IActionResult> UpdateUserPreferences(
+        [FromBody] UpdateUserPreferencesRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new UpdateUserPreferencesCommand(
+                request.AiEnabled,
+                request.PreferredProvider,
+                request.ConfirmationRequired,
+                request.PreferredLanguage,
+                request.EnabledTaskTypes),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("governance")]
+    public async Task<IActionResult> GetGovernancePolicy(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetGovernancePolicyQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : result.Error.Code == "AiGovernance.AccessDenied"
+            ? StatusCode(403, new { error = result.Error.Message })
+            : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpPut("governance")]
+    public async Task<IActionResult> UpdateGovernancePolicy(
+        [FromBody] UpdateGovernancePolicyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new UpdateGovernancePolicyCommand(
+                request.AiEnabled,
+                request.AllowedProviders,
+                request.DefaultProvider,
+                request.AllowedTaskTypes,
+                request.MaxDailyRequestsPerUser,
+                request.MaxMonthlyRequestsPerTenant,
+                request.RequireHumanConfirmation),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : result.Error.Code == "AiGovernance.AccessDenied"
+            ? StatusCode(403, new { error = result.Error.Message })
+            : BadRequest(new { error = result.Error.Message });
+    }
+
+    [HttpGet("policy/effective")]
+    public async Task<IActionResult> GetEffectivePolicy(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetEffectivePolicyQuery(), cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : BadRequest(new { error = result.Error.Message });
+    }
 }
 
 // ---- Request Records ----
@@ -650,3 +721,19 @@ public sealed record ReviewRecommendationRequest(string Action, string? Notes);
 public sealed record ExecuteAnalysisRequest(
     string TaskType, string? Module, string Content,
     string? EntityId, int MaxContextDocuments = 10);
+
+public sealed record UpdateUserPreferencesRequest(
+    bool AiEnabled,
+    string? PreferredProvider,
+    bool ConfirmationRequired,
+    string? PreferredLanguage,
+    List<string>? EnabledTaskTypes);
+
+public sealed record UpdateGovernancePolicyRequest(
+    bool AiEnabled,
+    List<string>? AllowedProviders,
+    string? DefaultProvider,
+    List<string>? AllowedTaskTypes,
+    int? MaxDailyRequestsPerUser,
+    int? MaxMonthlyRequestsPerTenant,
+    bool RequireHumanConfirmation);

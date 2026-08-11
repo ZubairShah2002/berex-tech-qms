@@ -232,5 +232,10 @@ public static class DependencyInjection
         services.AddScoped<IAiPromptTemplateRepository, AiPromptTemplateRepository>();
         services.AddScoped<IAiUsageService, AiUsageTrackingService>();
         services.AddScoped<AiPromptTemplateManager>();
+
+        // Sprint 18: AI Governance & User Preferences
+        services.AddScoped<IAiUserPreferenceRepository, AiUserPreferenceRepository>();
+        services.AddScoped<IAiGovernancePolicyRepository, AiGovernancePolicyRepository>();
+        services.AddScoped<IAiGovernanceService, AiGovernanceService>();
     }
 }

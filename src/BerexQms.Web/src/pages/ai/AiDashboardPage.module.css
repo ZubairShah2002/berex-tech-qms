@@ -925,3 +925,112 @@
   justify-content: space-between;
   gap: var(--spacing-3);
 }
+
+/* Sprint 18: Settings tab styles */
+
+.settingsForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.settingsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--spacing-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settingsRow:last-child {
+  border-bottom: none;
+}
+
+.settingsLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+.settingsLabelText {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.settingsLabelHint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.settingsControl {
+  flex-shrink: 0;
+  min-width: 180px;
+}
+
+.settingsActions {
+  display: flex;
+  gap: var(--spacing-2);
+  justify-content: flex-end;
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.settingsSaved {
+  font-size: var(--font-size-sm);
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.governanceSection {
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-6);
+  border-top: 2px solid var(--color-border);
+}
+
+.usageMeter {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.usageMeterBar {
+  flex: 1;
+  height: 6px;
+  background: var(--color-surface-secondary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.usageMeterFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.usageMeterLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.checkboxRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.checkboxItem {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.checkboxItem input[type="checkbox"] {
+  accent-color: var(--color-primary);
+}

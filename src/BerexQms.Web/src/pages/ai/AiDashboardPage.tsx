@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle, Database, Search, TrendingUp, BarChart3, CheckCircle, XCircle, Eye, Server, Gauge } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { Brain, Activity, ToggleLeft, Shield, ClipboardList, Workflow, AlertTriangle, Database, Search, TrendingUp, BarChart3, CheckCircle, XCircle, Eye, Server, Gauge, Settings } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
 import { DataTable } from '@/components/ui/DataTable'
@@ -281,9 +281,42 @@ interface AiUsageByTaskTypeDto {
   averageProcessingTimeMs: number
 }
 
+// Sprint 18: AI Governance & User Preferences types
+
+interface AiUserPreferenceDto {
+  aiEnabled: boolean
+  preferredProvider: string
+  confirmationRequired: boolean
+  preferredLanguage: string | null
+  enabledTaskTypes: string[]
+}
+
+interface AiGovernancePolicyDto {
+  aiEnabled: boolean
+  allowedProviders: string[]
+  defaultProvider: string | null
+  allowedTaskTypes: string[]
+  maxDailyRequestsPerUser: number | null
+  maxMonthlyRequestsPerTenant: number | null
+  requireHumanConfirmation: boolean
+}
+
+interface AiEffectivePolicyDto {
+  aiEnabled: boolean
+  allowedProviders: string[]
+  preferredProvider: string | null
+  allowedTaskTypes: string[]
+  confirmationRequired: boolean
+  preferredLanguage: string | null
+  dailyRequestsUsed: number
+  dailyRequestsLimit: number | null
+  monthlyRequestsUsed: number
+  monthlyRequestsLimit: number | null
+}
+
 // ---- Constants --------------------------------------------------------------
 
-type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows' | 'knowledgeContext' | 'aiInsights' | 'providers'
+type TabId = 'capabilities' | 'interactions' | 'models' | 'permissions' | 'actionLog' | 'workflows' | 'knowledgeContext' | 'aiInsights' | 'providers' | 'settings'
 
 const capabilityLabels: Record<string, string> = {
   DefectPrediction: 'Defect Prediction',
@@ -448,6 +481,19 @@ const taskTypeLabels: Record<string, string> = {
   StructuredDataExtraction: 'Data Extraction',
 }
 
+const providerOptions = [
+  { value: 'Automatic', label: 'Automatic (system default)' },
+  { value: 'Local', label: 'Local (Ollama)' },
+  { value: 'Claude', label: 'Claude' },
+  { value: 'OpenAi', label: 'OpenAI' },
+]
+
+const allTaskTypes = [
+  'DocumentAnalysis', 'QualityAnalysis', 'RecommendationGeneration',
+  'Summarization', 'RiskAnalysis', 'CAPAAnalysis', 'SupplierAnalysis',
+  'AuditAnalysis', 'DefectTrendAnalysis', 'StructuredDataExtraction',
+]
+
 const permissionLevelDescriptions: Record<string, string> = {
   Assistant: 'Read-only AI access. View predictions, suggestions, and reports.',
   Manager: 'Generate content and draft workflows. Can request AI-powered analysis.',
@@ -488,6 +534,23 @@ export function AiDashboardPage() {
 
   // Confirmation dialog
   const [confirmationRequest, setConfirmationRequest] = useState<AiConfirmationRequestDto | null>(null)
+
+  // Settings state (Sprint 18)
+  const [prefAiEnabled, setPrefAiEnabled] = useState(true)
+  const [prefProvider, setPrefProvider] = useState('Automatic')
+  const [prefConfirmation, setPrefConfirmation] = useState(true)
+  const [prefLanguage, setPrefLanguage] = useState('')
+  const [prefTaskTypes, setPrefTaskTypes] = useState<string[]>([])
+  const [prefSaved, setPrefSaved] = useState(false)
+
+  // Governance state (Sprint 18)
+  const [govAiEnabled, setGovAiEnabled] = useState(true)
+  const [govAllowedProviders, setGovAllowedProviders] = useState<string[]>([])
+  const [govDefaultProvider, setGovDefaultProvider] = useState('')
+  const [govAllowedTaskTypes, setGovAllowedTaskTypes] = useState<string[]>([])
+  const [govDailyLimit, setGovDailyLimit] = useState('')
+  const [govMonthlyLimit, setGovMonthlyLimit] = useState('')
+  const [govSaved, setGovSaved] = useState(false)
 
   const pageSize = 20
   const queryClient = useQueryClient()
@@ -639,6 +702,49 @@ export function AiDashboardPage() {
     enabled: activeTab === 'providers',
   })
 
+  // Sprint 18: Settings queries
+  const userPreferencesQuery = useQuery({
+    queryKey: ['ai', 'preferences'],
+    queryFn: () => apiClient.get<AiUserPreferenceDto>('/api/v1/ai/preferences').then(r => r.data),
+    enabled: activeTab === 'settings',
+  })
+
+  const governancePolicyQuery = useQuery({
+    queryKey: ['ai', 'governance'],
+    queryFn: () => apiClient.get<AiGovernancePolicyDto>('/api/v1/ai/governance').then(r => r.data).catch(() => null),
+    enabled: activeTab === 'settings',
+  })
+
+  const effectivePolicyQuery = useQuery({
+    queryKey: ['ai', 'effectivePolicy'],
+    queryFn: () => apiClient.get<AiEffectivePolicyDto>('/api/v1/ai/policy/effective').then(r => r.data),
+    enabled: activeTab === 'settings',
+  })
+
+  // Sync form state when query data arrives
+  useEffect(() => {
+    if (userPreferencesQuery.data) {
+      const p = userPreferencesQuery.data
+      setPrefAiEnabled(p.aiEnabled)
+      setPrefProvider(p.preferredProvider ?? 'Automatic')
+      setPrefConfirmation(p.confirmationRequired)
+      setPrefLanguage(p.preferredLanguage ?? '')
+      setPrefTaskTypes(p.enabledTaskTypes ?? [])
+    }
+  }, [userPreferencesQuery.data])
+
+  useEffect(() => {
+    if (governancePolicyQuery.data) {
+      const g = governancePolicyQuery.data
+      setGovAiEnabled(g.aiEnabled)
+      setGovAllowedProviders(g.allowedProviders ?? [])
+      setGovDefaultProvider(g.defaultProvider ?? '')
+      setGovAllowedTaskTypes(g.allowedTaskTypes ?? [])
+      setGovDailyLimit(g.maxDailyRequestsPerUser?.toString() ?? '')
+      setGovMonthlyLimit(g.maxMonthlyRequestsPerTenant?.toString() ?? '')
+    }
+  }, [governancePolicyQuery.data])
+
   // ---- Mutations ----
 
   const reviewRecommendationMutation = useMutation({
@@ -683,6 +789,29 @@ export function AiDashboardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai', 'actionLogs'] })
       setConfirmationRequest(null)
+    },
+  })
+
+  // Sprint 18: Settings mutations
+  const updatePreferencesMutation = useMutation({
+    mutationFn: (data: { aiEnabled: boolean; preferredProvider: string | null; confirmationRequired: boolean; preferredLanguage: string | null; enabledTaskTypes: string[] | null }) =>
+      apiClient.put('/api/v1/ai/preferences', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai', 'preferences'] })
+      queryClient.invalidateQueries({ queryKey: ['ai', 'effectivePolicy'] })
+      setPrefSaved(true)
+      setTimeout(() => setPrefSaved(false), 3000)
+    },
+  })
+
+  const updateGovernanceMutation = useMutation({
+    mutationFn: (data: { aiEnabled: boolean; allowedProviders: string[] | null; defaultProvider: string | null; allowedTaskTypes: string[] | null; maxDailyRequestsPerUser: number | null; maxMonthlyRequestsPerTenant: number | null; requireHumanConfirmation: boolean }) =>
+      apiClient.put('/api/v1/ai/governance', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai', 'governance'] })
+      queryClient.invalidateQueries({ queryKey: ['ai', 'effectivePolicy'] })
+      setGovSaved(true)
+      setTimeout(() => setGovSaved(false), 3000)
     },
   })
 
@@ -1944,6 +2073,388 @@ export function AiDashboardPage() {
     )
   }
 
+  // ---- Settings tab (Sprint 18) ----
+
+  function handleSavePreferences() {
+    updatePreferencesMutation.mutate({
+      aiEnabled: prefAiEnabled,
+      preferredProvider: prefProvider === 'Automatic' ? null : prefProvider,
+      confirmationRequired: prefConfirmation,
+      preferredLanguage: prefLanguage || null,
+      enabledTaskTypes: prefTaskTypes.length > 0 ? prefTaskTypes : null,
+    })
+  }
+
+  function handleSaveGovernance() {
+    updateGovernanceMutation.mutate({
+      aiEnabled: govAiEnabled,
+      allowedProviders: govAllowedProviders.length > 0 ? govAllowedProviders : null,
+      defaultProvider: govDefaultProvider || null,
+      allowedTaskTypes: govAllowedTaskTypes.length > 0 ? govAllowedTaskTypes : null,
+      maxDailyRequestsPerUser: govDailyLimit ? parseInt(govDailyLimit, 10) : null,
+      maxMonthlyRequestsPerTenant: govMonthlyLimit ? parseInt(govMonthlyLimit, 10) : null,
+      requireHumanConfirmation: true,
+    })
+  }
+
+  function togglePrefTaskType(taskType: string) {
+    setPrefTaskTypes(prev =>
+      prev.includes(taskType)
+        ? prev.filter(t => t !== taskType)
+        : [...prev, taskType]
+    )
+  }
+
+  function toggleGovProvider(provider: string) {
+    setGovAllowedProviders(prev =>
+      prev.includes(provider)
+        ? prev.filter(p => p !== provider)
+        : [...prev, provider]
+    )
+  }
+
+  function toggleGovTaskType(taskType: string) {
+    setGovAllowedTaskTypes(prev =>
+      prev.includes(taskType)
+        ? prev.filter(t => t !== taskType)
+        : [...prev, taskType]
+    )
+  }
+
+  function renderSettings() {
+    const prefLoading = userPreferencesQuery.isLoading
+    const effectivePolicy = effectivePolicyQuery.data
+    const isAdmin = user?.roles?.some(r => r === 'Administrator' || r === 'SuperAdministrator')
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-6)' }}>
+        {/* Effective Policy Summary */}
+        {effectivePolicy && (
+          <div className={styles.section}>
+            <h3 className={styles.sectionTitle}>Your Effective AI Policy</h3>
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+              The resolved combination of organization policy and your personal preferences.
+            </p>
+            <div className={styles.riskStatsGrid}>
+              <div className={styles.statCard}>
+                <p className={styles.statValue}>{effectivePolicy.aiEnabled ? 'Enabled' : 'Disabled'}</p>
+                <p className={styles.statLabel}>AI Status</p>
+              </div>
+              <div className={styles.statCard}>
+                <p className={styles.statValue}>{effectivePolicy.preferredProvider ?? 'Automatic'}</p>
+                <p className={styles.statLabel}>Provider</p>
+              </div>
+              <div className={styles.statCard}>
+                <p className={styles.statValue}>{effectivePolicy.confirmationRequired ? 'Required' : 'Optional'}</p>
+                <p className={styles.statLabel}>Confirmation</p>
+              </div>
+              <div className={styles.statCard}>
+                <p className={styles.statValue}>{effectivePolicy.allowedTaskTypes.length > 0 ? effectivePolicy.allowedTaskTypes.length : 'All'}</p>
+                <p className={styles.statLabel}>Task Types</p>
+              </div>
+            </div>
+
+            {/* Usage meters */}
+            {effectivePolicy.dailyRequestsLimit != null && (
+              <div style={{ marginTop: 'var(--spacing-4)' }}>
+                <div className={styles.usageMeter}>
+                  <span className={styles.usageMeterLabel}>Daily: {effectivePolicy.dailyRequestsUsed}/{effectivePolicy.dailyRequestsLimit}</span>
+                  <div className={styles.usageMeterBar}>
+                    <div
+                      className={styles.usageMeterFill}
+                      style={{
+                        width: `${Math.min((effectivePolicy.dailyRequestsUsed / effectivePolicy.dailyRequestsLimit) * 100, 100)}%`,
+                        background: effectivePolicy.dailyRequestsUsed >= effectivePolicy.dailyRequestsLimit ? 'var(--color-error)' : 'var(--color-primary)',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            {effectivePolicy.monthlyRequestsLimit != null && (
+              <div style={{ marginTop: 'var(--spacing-2)' }}>
+                <div className={styles.usageMeter}>
+                  <span className={styles.usageMeterLabel}>Monthly: {effectivePolicy.monthlyRequestsUsed}/{effectivePolicy.monthlyRequestsLimit}</span>
+                  <div className={styles.usageMeterBar}>
+                    <div
+                      className={styles.usageMeterFill}
+                      style={{
+                        width: `${Math.min((effectivePolicy.monthlyRequestsUsed / effectivePolicy.monthlyRequestsLimit) * 100, 100)}%`,
+                        background: effectivePolicy.monthlyRequestsUsed >= effectivePolicy.monthlyRequestsLimit ? 'var(--color-error)' : 'var(--color-primary)',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* User Preferences */}
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>Your AI Preferences</h3>
+          <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+            Personal settings for AI assistance. Organization policies may restrict some options.
+          </p>
+          {prefLoading ? (
+            <div className={styles.loadingSkeleton} style={{ height: 200 }} />
+          ) : (
+            <div className={styles.settingsForm}>
+              <div className={styles.settingsRow}>
+                <div className={styles.settingsLabel}>
+                  <span className={styles.settingsLabelText}>AI Assistance</span>
+                  <span className={styles.settingsLabelHint}>Enable or disable AI-powered suggestions and analysis.</span>
+                </div>
+                <div className={styles.settingsControl}>
+                  <button
+                    className={`${styles.toggle} ${prefAiEnabled ? styles.toggleEnabled : ''}`}
+                    onClick={() => setPrefAiEnabled(!prefAiEnabled)}
+                    title={prefAiEnabled ? 'Disable AI' : 'Enable AI'}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.settingsRow}>
+                <div className={styles.settingsLabel}>
+                  <span className={styles.settingsLabelText}>Preferred Provider</span>
+                  <span className={styles.settingsLabelHint}>Choose your preferred AI provider. Subject to organization policy.</span>
+                </div>
+                <div className={styles.settingsControl}>
+                  <Select
+                    label=""
+                    value={prefProvider}
+                    onChange={(e) => setPrefProvider(e.target.value)}
+                    options={providerOptions}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.settingsRow}>
+                <div className={styles.settingsLabel}>
+                  <span className={styles.settingsLabelText}>Require Confirmation</span>
+                  <span className={styles.settingsLabelHint}>Always confirm before applying AI recommendations.</span>
+                </div>
+                <div className={styles.settingsControl}>
+                  <button
+                    className={`${styles.toggle} ${prefConfirmation ? styles.toggleEnabled : ''}`}
+                    onClick={() => setPrefConfirmation(!prefConfirmation)}
+                    title={prefConfirmation ? 'Disable confirmation' : 'Enable confirmation'}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.settingsRow}>
+                <div className={styles.settingsLabel}>
+                  <span className={styles.settingsLabelText}>Preferred Language</span>
+                  <span className={styles.settingsLabelHint}>ISO 639-1 language code for AI responses (e.g., en, de, fr).</span>
+                </div>
+                <div className={styles.settingsControl}>
+                  <Input
+                    placeholder="e.g., en"
+                    value={prefLanguage}
+                    onChange={(e) => setPrefLanguage(e.target.value)}
+                    maxLength={10}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.settingsRow}>
+                <div className={styles.settingsLabel}>
+                  <span className={styles.settingsLabelText}>Enabled Task Types</span>
+                  <span className={styles.settingsLabelHint}>Select which AI task types you want enabled. Leave all unchecked for all available tasks.</span>
+                </div>
+                <div className={styles.checkboxRow}>
+                  {allTaskTypes.map(tt => (
+                    <label key={tt} className={styles.checkboxItem}>
+                      <input
+                        type="checkbox"
+                        checked={prefTaskTypes.includes(tt)}
+                        onChange={() => togglePrefTaskType(tt)}
+                      />
+                      {taskTypeLabels[tt] ?? tt}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.settingsActions}>
+                {prefSaved && (
+                  <span className={styles.settingsSaved}>
+                    <CheckCircle size={14} />
+                    Preferences saved
+                  </span>
+                )}
+                <Button
+                  variant="primary"
+                  onClick={handleSavePreferences}
+                  disabled={updatePreferencesMutation.isPending}
+                >
+                  Save Preferences
+                </Button>
+              </div>
+              {updatePreferencesMutation.isError && (
+                <div className={styles.errorBanner}>
+                  Failed to save preferences. A selected option may be restricted by organization policy.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Admin: Governance Policy */}
+        {isAdmin && (
+          <div className={styles.governanceSection}>
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>Organization AI Governance</h3>
+              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginTop: 0, marginBottom: 'var(--spacing-4)' }}>
+                Organization-wide AI controls. These settings override individual user preferences.
+              </p>
+              {governancePolicyQuery.isLoading ? (
+                <div className={styles.loadingSkeleton} style={{ height: 300 }} />
+              ) : (
+                <div className={styles.settingsForm}>
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsLabel}>
+                      <span className={styles.settingsLabelText}>AI Enabled (Organization)</span>
+                      <span className={styles.settingsLabelHint}>Master switch. When disabled, no user in this organization can use AI.</span>
+                    </div>
+                    <div className={styles.settingsControl}>
+                      <button
+                        className={`${styles.toggle} ${govAiEnabled ? styles.toggleEnabled : ''}`}
+                        onClick={() => setGovAiEnabled(!govAiEnabled)}
+                        title={govAiEnabled ? 'Disable AI for org' : 'Enable AI for org'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsLabel}>
+                      <span className={styles.settingsLabelText}>Allowed Providers</span>
+                      <span className={styles.settingsLabelHint}>Restrict which AI providers users can access. Leave all unchecked to allow all.</span>
+                    </div>
+                    <div className={styles.checkboxRow}>
+                      {['Local', 'Claude', 'OpenAi'].map(p => (
+                        <label key={p} className={styles.checkboxItem}>
+                          <input
+                            type="checkbox"
+                            checked={govAllowedProviders.includes(p)}
+                            onChange={() => toggleGovProvider(p)}
+                          />
+                          {p}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsLabel}>
+                      <span className={styles.settingsLabelText}>Default Provider</span>
+                      <span className={styles.settingsLabelHint}>Organization-wide default provider.</span>
+                    </div>
+                    <div className={styles.settingsControl}>
+                      <Select
+                        label=""
+                        value={govDefaultProvider}
+                        onChange={(e) => setGovDefaultProvider(e.target.value)}
+                        options={[{ value: '', label: 'System default' }, { value: 'Local', label: 'Local' }, { value: 'Claude', label: 'Claude' }, { value: 'OpenAi', label: 'OpenAI' }]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsLabel}>
+                      <span className={styles.settingsLabelText}>Allowed Task Types</span>
+                      <span className={styles.settingsLabelHint}>Restrict AI tasks. Leave all unchecked to allow all.</span>
+                    </div>
+                    <div className={styles.checkboxRow}>
+                      {allTaskTypes.map(tt => (
+                        <label key={tt} className={styles.checkboxItem}>
+                          <input
+                            type="checkbox"
+                            checked={govAllowedTaskTypes.includes(tt)}
+                            onChange={() => toggleGovTaskType(tt)}
+                          />
+                          {taskTypeLabels[tt] ?? tt}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsLabel}>
+                      <span className={styles.settingsLabelText}>Daily Limit per User</span>
+                      <span className={styles.settingsLabelHint}>Maximum AI requests per user per day. Leave empty for unlimited.</span>
+                    </div>
+                    <div className={styles.settingsControl}>
+                      <Input
+                        type="number"
+                        placeholder="Unlimited"
+                        value={govDailyLimit}
+                        onChange={(e) => setGovDailyLimit(e.target.value)}
+                        min={1}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsLabel}>
+                      <span className={styles.settingsLabelText}>Monthly Limit (Organization)</span>
+                      <span className={styles.settingsLabelHint}>Maximum total AI requests per month. Leave empty for unlimited.</span>
+                    </div>
+                    <div className={styles.settingsControl}>
+                      <Input
+                        type="number"
+                        placeholder="Unlimited"
+                        value={govMonthlyLimit}
+                        onChange={(e) => setGovMonthlyLimit(e.target.value)}
+                        min={1}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsRow}>
+                    <div className={styles.settingsLabel}>
+                      <span className={styles.settingsLabelText}>Human Confirmation</span>
+                      <span className={styles.settingsLabelHint}>Always required for QMS modifications. This cannot be disabled.</span>
+                    </div>
+                    <div className={styles.settingsControl}>
+                      <button
+                        className={`${styles.toggle} ${styles.toggleEnabled}`}
+                        disabled
+                        title="Human confirmation is always required"
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.settingsActions}>
+                    {govSaved && (
+                      <span className={styles.settingsSaved}>
+                        <CheckCircle size={14} />
+                        Governance policy saved
+                      </span>
+                    )}
+                    <Button
+                      variant="primary"
+                      onClick={handleSaveGovernance}
+                      disabled={updateGovernanceMutation.isPending}
+                    >
+                      Save Governance Policy
+                    </Button>
+                  </div>
+                  {updateGovernanceMutation.isError && (
+                    <div className={styles.errorBanner}>
+                      Failed to save governance policy. Verify your settings and try again.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // ---- Confirmation Dialog ----
 
   function renderConfirmationDialog() {
@@ -2065,6 +2576,10 @@ export function AiDashboardPage() {
           <Server size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
           Providers
         </button>
+        <button className={`${styles.tab} ${activeTab === 'settings' ? styles.tabActive : ''}`} onClick={() => setActiveTab('settings')}>
+          <Settings size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+          Settings
+        </button>
       </div>
 
       {activeTab === 'capabilities' && renderCapabilities()}
@@ -2076,6 +2591,7 @@ export function AiDashboardPage() {
       {activeTab === 'knowledgeContext' && renderKnowledgeContext()}
       {activeTab === 'aiInsights' && renderAiInsights()}
       {activeTab === 'providers' && renderProviders()}
+      {activeTab === 'settings' && renderSettings()}
 
       {renderConfirmationDialog()}
     </div>

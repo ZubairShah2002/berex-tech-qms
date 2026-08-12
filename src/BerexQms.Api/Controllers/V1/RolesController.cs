@@ -11,7 +11,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/roles")]
-[Authorize]
 public sealed class RolesController : ControllerBase
 {
     private readonly ISender _sender;
@@ -22,6 +21,7 @@ public sealed class RolesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ListRolesQuery(), cancellationToken);
@@ -29,6 +29,7 @@ public sealed class RolesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> Create([FromBody] CreateRoleCommand command, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(command, cancellationToken);

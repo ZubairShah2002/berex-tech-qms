@@ -128,7 +128,7 @@ export function EquipmentDetailPage() {
   const { data: equipment, isLoading } = useQuery<EquipmentDetail>({
     queryKey: ['equipment', id],
     queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/equipment/${id}`)
+      const res = await apiClient.get(`/equipment/${id}`)
       return res.data
     },
     enabled: Boolean(id),
@@ -150,7 +150,7 @@ export function EquipmentDetailPage() {
   }
 
   const calMutation = useMutation({
-    mutationFn: () => apiClient.post(`/api/v1/equipment/${id}/calibrations`, {
+    mutationFn: () => apiClient.post(`/equipment/${id}/calibrations`, {
       calibrationDate: calForm.calibrationDate,
       result: calForm.result,
       technicianId: calForm.technicianId || null,
@@ -166,7 +166,7 @@ export function EquipmentDetailPage() {
   })
 
   const certMutation = useMutation({
-    mutationFn: (calId: string) => apiClient.post(`/api/v1/equipment/${id}/calibrations/${calId}/certificate`, {
+    mutationFn: (calId: string) => apiClient.post(`/equipment/${id}/calibrations/${calId}/certificate`, {
       issuingLab: certForm.issuingLab,
       accreditationRef: certForm.accreditationRef || null,
       fileRef: certForm.fileRef || null,
@@ -181,7 +181,7 @@ export function EquipmentDetailPage() {
   })
 
   const scheduleMutation = useMutation({
-    mutationFn: () => apiClient.put(`/api/v1/equipment/${id}/schedule`, {
+    mutationFn: () => apiClient.put(`/equipment/${id}/schedule`, {
       intervalDays: Number(scheduleForm.intervalDays),
       leadTimeDays: Number(scheduleForm.leadTimeDays),
       labType: scheduleForm.labType,
@@ -196,7 +196,7 @@ export function EquipmentDetailPage() {
   })
 
   const gaugeMutation = useMutation({
-    mutationFn: () => apiClient.post(`/api/v1/equipment/${id}/gauge-rr`, {
+    mutationFn: () => apiClient.post(`/equipment/${id}/gauge-rr`, {
       characteristicId: gaugeForm.characteristicId || null,
       studyDate: gaugeForm.studyDate,
       totalGRRPct: Number(gaugeForm.totalGRRPct),
@@ -214,7 +214,7 @@ export function EquipmentDetailPage() {
 
   const reviewMutation = useMutation({
     mutationFn: ({ assessmentId, action, notes }: { assessmentId: string; action: string; notes?: string }) =>
-      apiClient.put(`/api/v1/calibration/impact-assessment/${assessmentId}`, { action, notes }),
+      apiClient.put(`/calibration/impact-assessment/${assessmentId}`, { action, notes }),
     onSuccess: invalidate,
     onError: handleError,
   })

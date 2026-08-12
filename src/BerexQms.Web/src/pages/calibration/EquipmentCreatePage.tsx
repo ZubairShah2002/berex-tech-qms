@@ -26,7 +26,7 @@ export function EquipmentCreatePage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post('/api/v1/equipment', {
+      const res = await apiClient.post('/equipment', {
         code: form.code,
         name: form.name,
         type: form.type || null,

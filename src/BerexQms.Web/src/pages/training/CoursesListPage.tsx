@@ -43,7 +43,7 @@ export function CoursesListPage() {
       if (search) params.set('search', search)
       params.set('page', String(page))
       params.set('pageSize', String(pageSize))
-      const res = await apiClient.get(`/api/v1/training/courses?${params}`)
+      const res = await apiClient.get(`/training/courses?${params}`)
       return res.data
     },
   })

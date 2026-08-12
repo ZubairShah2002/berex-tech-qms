@@ -31,6 +31,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? status,
@@ -47,6 +48,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetSupplierByIdQuery(id), cancellationToken);
@@ -58,6 +60,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Create(
         [FromBody] CreateSupplierRequest request, CancellationToken cancellationToken)
     {
@@ -75,6 +78,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Update(
         Guid id, [FromBody] UpdateSupplierRequest request, CancellationToken cancellationToken)
     {
@@ -92,6 +96,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/approvals")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> AddApproval(
         Guid id, [FromBody] AddApprovalRequest request, CancellationToken cancellationToken)
     {
@@ -108,6 +113,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/scorecards")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> CreateScorecard(
         Guid id, [FromBody] CreateScorecardRequest request, CancellationToken cancellationToken)
     {
@@ -125,6 +131,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/scars")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> IssueScar(
         Guid id, [FromBody] IssueScarRequest request, CancellationToken cancellationToken)
     {
@@ -142,6 +149,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPut("{id:guid}/scars/{scarId:guid}/respond")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,Supplier")]
     public async Task<IActionResult> RespondToScar(
         Guid id, Guid scarId, [FromBody] RespondToScarRequest request,
         CancellationToken cancellationToken)
@@ -159,6 +167,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPut("{id:guid}/scars/{scarId:guid}/review")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> ReviewScarResponse(
         Guid id, Guid scarId, [FromBody] ReviewScarRequest request,
         CancellationToken cancellationToken)
@@ -175,6 +184,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPut("{id:guid}/scars/{scarId:guid}/verify")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> VerifyScar(
         Guid id, Guid scarId, [FromBody] VerifyScarRequest request,
         CancellationToken cancellationToken)
@@ -191,6 +201,7 @@ public sealed class SuppliersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/approved-parts")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> AddApprovedPart(
         Guid id, [FromBody] AddApprovedPartRequest request, CancellationToken cancellationToken)
     {

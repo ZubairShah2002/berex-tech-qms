@@ -36,7 +36,7 @@ export function SpcCreatePage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post('/api/v1/spc/charts', {
+      const res = await apiClient.post('/spc/charts', {
         code: form.code,
         name: form.name,
         chartType: form.chartType,

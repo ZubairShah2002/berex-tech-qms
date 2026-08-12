@@ -32,6 +32,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? status,
@@ -46,6 +47,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetEquipmentByIdQuery(id), cancellationToken);
@@ -54,6 +56,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Register(
         [FromBody] RegisterEquipmentRequest request,
         CancellationToken cancellationToken)
@@ -76,6 +79,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateEquipmentRequest request,
@@ -97,6 +101,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpPost("{id:guid}/calibrations")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> RecordCalibration(
         Guid id,
         [FromBody] RecordCalibrationRequest request,
@@ -115,6 +120,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpPost("{id:guid}/calibrations/{calId:guid}/certificate")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> AttachCertificate(
         Guid id,
         Guid calId,
@@ -134,6 +140,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpPost("{id:guid}/gauge-rr")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> RecordGaugeStudy(
         Guid id,
         [FromBody] RecordGaugeStudyRequest request,
@@ -153,6 +160,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpPut("{id:guid}/schedule")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> SetSchedule(
         Guid id,
         [FromBody] SetScheduleRequest request,
@@ -170,6 +178,7 @@ public sealed class EquipmentController : ControllerBase
     }
 
     [HttpGet("{id:guid}/status")]
+    [Authorize]
     public async Task<IActionResult> GetStatus(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetEquipmentByIdQuery(id), cancellationToken);
@@ -200,6 +209,7 @@ public sealed class CalibrationController : ControllerBase
     }
 
     [HttpGet("schedule")]
+    [Authorize]
     public async Task<IActionResult> GetScheduleDashboard(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetCalibrationScheduleQuery(), cancellationToken);
@@ -208,6 +218,7 @@ public sealed class CalibrationController : ControllerBase
     }
 
     [HttpGet("overdue")]
+    [Authorize]
     public async Task<IActionResult> GetOverdue(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetOverdueEquipmentQuery(), cancellationToken);
@@ -216,6 +227,7 @@ public sealed class CalibrationController : ControllerBase
     }
 
     [HttpGet("impact-assessment/{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetImpactAssessment(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetImpactAssessmentQuery(id), cancellationToken);
@@ -224,6 +236,7 @@ public sealed class CalibrationController : ControllerBase
     }
 
     [HttpPut("impact-assessment/{id:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> ReviewImpactAssessment(
         Guid id,
         [FromBody] ReviewImpactAssessmentRequest request,

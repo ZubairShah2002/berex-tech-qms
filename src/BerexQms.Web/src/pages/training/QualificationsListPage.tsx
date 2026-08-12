@@ -45,7 +45,7 @@ export function QualificationsListPage() {
       if (search) params.set('search', search)
       params.set('page', String(page))
       params.set('pageSize', String(pageSize))
-      const res = await apiClient.get(`/api/v1/qualifications?${params}`)
+      const res = await apiClient.get(`/qualifications?${params}`)
       return res.data
     },
     enabled: activeTab === 'qualifications',

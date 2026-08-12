@@ -27,6 +27,7 @@ public sealed class SpcChartsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? chartType,
@@ -42,6 +43,7 @@ public sealed class SpcChartsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetChartByIdQuery(id), cancellationToken);
@@ -50,6 +52,7 @@ public sealed class SpcChartsController : ControllerBase
     }
 
     [HttpGet("by-part/{partId:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetByPart(Guid partId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetChartsByPartQuery(partId), cancellationToken);
@@ -58,6 +61,7 @@ public sealed class SpcChartsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Create(
         [FromBody] CreateChartRequest request,
         CancellationToken cancellationToken)
@@ -78,6 +82,7 @@ public sealed class SpcChartsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateChartRequest request,
@@ -94,6 +99,7 @@ public sealed class SpcChartsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/data-points")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> AddDataPoint(
         Guid id,
         [FromBody] AddDataPointRequest request,
@@ -111,6 +117,7 @@ public sealed class SpcChartsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/recalculate")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> RecalculateLimits(
         Guid id,
         CancellationToken cancellationToken)
@@ -121,6 +128,7 @@ public sealed class SpcChartsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/deactivate")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> Deactivate(
         Guid id,
         CancellationToken cancellationToken)

@@ -20,7 +20,7 @@ export function AssignmentCreatePage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post('/api/v1/training/assignments', {
+      const res = await apiClient.post('/training/assignments', {
         employeeId: form.employeeId,
         courseId: form.courseId,
         dueDate: form.dueDate,

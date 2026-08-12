@@ -19,7 +19,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/capas")]
-[Authorize]
 public sealed class CAPAsController : ControllerBase
 {
     private readonly ISender _sender;
@@ -30,6 +29,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? status,
@@ -47,6 +47,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetCapaByIdQuery(id), cancellationToken);
@@ -58,6 +59,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Create(
         [FromBody] CreateCapaRequest request, CancellationToken cancellationToken)
     {
@@ -77,6 +79,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/rca")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> StartRCA(
         Guid id, [FromBody] StartRCARequest request, CancellationToken cancellationToken)
     {
@@ -92,6 +95,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/rca")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> SubmitRCA(
         Guid id, [FromBody] SubmitRCARequest request, CancellationToken cancellationToken)
     {
@@ -107,6 +111,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/actions")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> AddAction(
         Guid id, [FromBody] AddActionRequest request, CancellationToken cancellationToken)
     {
@@ -124,6 +129,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/actions/{actionId:guid}/complete")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> CompleteAction(
         Guid id, Guid actionId, [FromBody] CompleteActionRequest request,
         CancellationToken cancellationToken)
@@ -140,6 +146,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/verifications")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> ScheduleVerification(
         Guid id, [FromBody] ScheduleVerificationRequest request, CancellationToken cancellationToken)
     {
@@ -155,6 +162,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/verify")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> RecordVerification(
         Guid id, [FromBody] RecordVerificationRequest request, CancellationToken cancellationToken)
     {
@@ -172,6 +180,7 @@ public sealed class CAPAsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/assign")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> Assign(
         Guid id, [FromBody] AssignCapaRequest request, CancellationToken cancellationToken)
     {

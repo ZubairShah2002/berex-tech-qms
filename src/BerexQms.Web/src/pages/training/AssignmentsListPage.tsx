@@ -59,7 +59,7 @@ export function AssignmentsListPage() {
       if (status) params.set('status', status)
       params.set('page', String(page))
       params.set('pageSize', String(pageSize))
-      const res = await apiClient.get(`/api/v1/training/assignments?${params}`)
+      const res = await apiClient.get(`/training/assignments?${params}`)
       return res.data
     },
   })

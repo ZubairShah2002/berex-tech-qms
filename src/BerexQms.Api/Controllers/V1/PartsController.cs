@@ -19,7 +19,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/parts")]
-[Authorize]
 public sealed class PartsController : ControllerBase
 {
     private readonly ISender _sender;
@@ -30,6 +29,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? status,
@@ -47,6 +47,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetPartByIdQuery(id), cancellationToken);
@@ -58,6 +59,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Create([FromBody] CreatePartRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
@@ -75,6 +77,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdatePartRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
@@ -92,6 +95,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/obsolete")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> Obsolete(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ObsoletePartCommand(id), cancellationToken);
@@ -103,6 +107,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/revisions")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> CreateRevision(
         Guid id, [FromBody] CreateRevisionRequest request, CancellationToken cancellationToken)
     {
@@ -118,6 +123,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/revisions/{revisionId:guid}/release")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> ReleaseRevision(Guid id, Guid revisionId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ReleaseRevisionCommand(id, revisionId), cancellationToken);
@@ -129,6 +135,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/revisions/{revisionId:guid}/parameters")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> AddSpecificationParameter(
         Guid id, Guid revisionId, [FromBody] AddParameterRequest request, CancellationToken cancellationToken)
     {
@@ -147,6 +154,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/bom")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> AddBomReference(
         Guid id, [FromBody] AddBomReferenceRequest request, CancellationToken cancellationToken)
     {
@@ -164,6 +172,7 @@ public sealed class PartsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/bom/{bomReferenceId:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> RemoveBomReference(Guid id, Guid bomReferenceId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new RemoveBomReferenceCommand(id, bomReferenceId), cancellationToken);

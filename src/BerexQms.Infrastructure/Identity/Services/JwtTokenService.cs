@@ -42,7 +42,8 @@ public sealed class JwtTokenService : ITokenService
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        var expiryMinutes = int.TryParse(jwtSection["ExpiryMinutes"], out var mins) ? mins : 15;
+        var expiryMinutes = int.TryParse(
+            jwtSection["ExpirationInMinutes"] ?? jwtSection["ExpiryMinutes"], out var mins) ? mins : 15;
 
         var token = new JwtSecurityToken(
             issuer: jwtSection["Issuer"],

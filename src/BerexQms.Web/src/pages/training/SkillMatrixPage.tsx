@@ -31,7 +31,7 @@ export function SkillMatrixPage() {
   const { data, isLoading, error } = useQuery<SkillMatrixEntry[]>({
     queryKey: ['skill-matrix'],
     queryFn: async () => {
-      const res = await apiClient.get('/api/v1/training/skill-matrix')
+      const res = await apiClient.get('/training/skill-matrix')
       return res.data
     },
   })

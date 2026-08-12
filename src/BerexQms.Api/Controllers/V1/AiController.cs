@@ -67,6 +67,7 @@ public sealed class AiController : ControllerBase
     // ---- Capabilities ----
 
     [HttpGet("capabilities")]
+    [Authorize]
     public async Task<IActionResult> ListCapabilities(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ListCapabilityConfigsQuery(), cancellationToken);
@@ -75,6 +76,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("capabilities/toggle")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> ToggleCapability(
         [FromBody] ToggleCapabilityRequest request,
         CancellationToken cancellationToken)
@@ -86,6 +88,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPut("capabilities/thresholds")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> UpdateThresholds(
         [FromBody] UpdateThresholdsRequest request,
         CancellationToken cancellationToken)
@@ -102,6 +105,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("capabilities/{capability}/stats")]
+    [Authorize]
     public async Task<IActionResult> GetCapabilityStats(
         string capability,
         [FromQuery] int days = 30,
@@ -116,6 +120,7 @@ public sealed class AiController : ControllerBase
     // ---- Predictions / Interactions ----
 
     [HttpPost("predict")]
+    [Authorize]
     public async Task<IActionResult> RequestPrediction(
         [FromBody] RequestPredictionRequest request,
         CancellationToken cancellationToken)
@@ -134,6 +139,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("interactions")]
+    [Authorize]
     public async Task<IActionResult> ListInteractions(
         [FromQuery] string? capability,
         [FromQuery] string? status,
@@ -150,6 +156,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("interactions/{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetInteraction(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetInteractionByIdQuery(id), cancellationToken);
@@ -158,6 +165,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("interactions/{id:guid}/action")]
+    [Authorize]
     public async Task<IActionResult> RecordUserAction(
         Guid id,
         [FromBody] RecordUserActionRequest request,
@@ -173,6 +181,7 @@ public sealed class AiController : ControllerBase
     // ---- Models ----
 
     [HttpGet("models")]
+    [Authorize]
     public async Task<IActionResult> ListModels(
         [FromQuery] string? capability,
         [FromQuery] string? status,
@@ -188,6 +197,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("models/{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetModel(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetModelByIdQuery(id), cancellationToken);
@@ -196,6 +206,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("models")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> RegisterModel(
         [FromBody] RegisterModelRequest request,
         CancellationToken cancellationToken)
@@ -215,6 +226,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("models/{id:guid}/transition")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> TransitionModelStatus(
         Guid id,
         [FromBody] TransitionModelStatusRequest request,
@@ -230,6 +242,7 @@ public sealed class AiController : ControllerBase
     // ---- AI Permissions ----
 
     [HttpGet("permissions/{userId:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetUserPermissions(
         Guid userId,
         CancellationToken cancellationToken)
@@ -241,6 +254,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("permissions/assign")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> AssignPermissionLevel(
         [FromBody] AssignPermissionLevelRequest request,
         CancellationToken cancellationToken)
@@ -253,6 +267,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("permissions/revoke")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> RevokePermission(
         [FromBody] RevokePermissionRequest request,
         CancellationToken cancellationToken)
@@ -266,6 +281,7 @@ public sealed class AiController : ControllerBase
     // ---- AI Actions ----
 
     [HttpPost("actions/execute")]
+    [Authorize]
     public async Task<IActionResult> ExecuteAction(
         [FromBody] ExecuteActionRequest request,
         CancellationToken cancellationToken)
@@ -284,6 +300,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("actions/{actionLogId:guid}/confirm")]
+    [Authorize]
     public async Task<IActionResult> ConfirmAction(
         Guid actionLogId,
         [FromBody] ConfirmActionRequest request,
@@ -296,6 +313,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("actions/logs")]
+    [Authorize]
     public async Task<IActionResult> ListActionLogs(
         [FromQuery] string? actionType,
         [FromQuery] string? permissionLevel,
@@ -315,6 +333,7 @@ public sealed class AiController : ControllerBase
     // ---- Workflows ----
 
     [HttpGet("workflows/definitions")]
+    [Authorize]
     public async Task<IActionResult> ListWorkflowDefinitions(
         [FromQuery] bool activeOnly = true,
         CancellationToken cancellationToken = default)
@@ -326,6 +345,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("workflows/execute")]
+    [Authorize]
     public async Task<IActionResult> ExecuteWorkflow(
         [FromBody] ExecuteWorkflowRequest request,
         CancellationToken cancellationToken)
@@ -337,6 +357,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("workflows/executions/{executionId:guid}/confirm")]
+    [Authorize]
     public async Task<IActionResult> ConfirmWorkflow(
         Guid executionId,
         [FromBody] ConfirmWorkflowRequest request,
@@ -349,6 +370,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("workflows/executions")]
+    [Authorize]
     public async Task<IActionResult> ListWorkflowExecutions(
         [FromQuery] string? status,
         [FromQuery] Guid? userId,
@@ -366,6 +388,7 @@ public sealed class AiController : ControllerBase
     // ---- Knowledge Context ----
 
     [HttpGet("context")]
+    [Authorize]
     public async Task<IActionResult> GetContext(
         [FromQuery] string sourceModule,
         [FromQuery] string? contextType,
@@ -378,6 +401,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("context/stats")]
+    [Authorize]
     public async Task<IActionResult> GetContextStats(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetContextStatsQuery(), cancellationToken);
@@ -386,6 +410,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("context/search")]
+    [Authorize]
     public async Task<IActionResult> SearchContext(
         [FromQuery] string searchTerm,
         [FromQuery] string? sourceModule,
@@ -400,6 +425,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("context/documents")]
+    [Authorize]
     public async Task<IActionResult> CreateContextDocument(
         [FromBody] CreateContextDocumentRequest request,
         CancellationToken cancellationToken)
@@ -420,6 +446,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPut("context/documents/{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> UpdateContextDocument(
         Guid id,
         [FromBody] UpdateContextDocumentRequest request,
@@ -433,6 +460,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("context/documents/{id:guid}/index")]
+    [Authorize]
     public async Task<IActionResult> IndexContextDocument(
         Guid id,
         CancellationToken cancellationToken)
@@ -444,6 +472,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("knowledge-sources")]
+    [Authorize]
     public async Task<IActionResult> ListKnowledgeSources(
         [FromQuery] bool? activeOnly,
         CancellationToken cancellationToken = default)
@@ -457,6 +486,7 @@ public sealed class AiController : ControllerBase
     // ---- Recommendations ----
 
     [HttpGet("recommendations")]
+    [Authorize]
     public async Task<IActionResult> GetRecommendations(
         [FromQuery] string? recommendationType,
         [FromQuery] string? status,
@@ -472,6 +502,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("recommendations/{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetRecommendationDetails(
         Guid id,
         CancellationToken cancellationToken)
@@ -483,6 +514,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("recommendations")]
+    [Authorize]
     public async Task<IActionResult> CreateRecommendation(
         [FromBody] CreateRecommendationRequest request,
         CancellationToken cancellationToken)
@@ -508,6 +540,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("recommendations/{id:guid}/review")]
+    [Authorize]
     public async Task<IActionResult> ReviewRecommendation(
         Guid id,
         [FromBody] ReviewRecommendationRequest request,
@@ -521,6 +554,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpPost("recommendations/{id:guid}/dismiss")]
+    [Authorize]
     public async Task<IActionResult> DismissRecommendation(
         Guid id,
         CancellationToken cancellationToken)
@@ -534,6 +568,7 @@ public sealed class AiController : ControllerBase
     // ---- AI Provider Integration (Sprint 16) ----
 
     [HttpPost("analyze")]
+    [Authorize]
     public async Task<IActionResult> ExecuteAnalysis(
         [FromBody] ExecuteAnalysisRequest request,
         CancellationToken cancellationToken)
@@ -551,6 +586,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("providers/status")]
+    [Authorize]
     public async Task<IActionResult> GetProviderStatus(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetAiProviderStatusQuery(), cancellationToken);
@@ -559,6 +595,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("providers/task-mappings")]
+    [Authorize]
     public async Task<IActionResult> GetTaskMappings(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetAiTaskMappingsQuery(), cancellationToken);
@@ -567,6 +604,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("usage/summary")]
+    [Authorize]
     public async Task<IActionResult> GetUsageSummary(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetAiUsageSummaryQuery(), cancellationToken);
@@ -575,6 +613,7 @@ public sealed class AiController : ControllerBase
     }
 
     [HttpGet("providers/local/models")]
+    [Authorize]
     public async Task<IActionResult> GetLocalModels(CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
@@ -586,6 +625,7 @@ public sealed class AiController : ControllerBase
     // ---- Quality Intelligence ----
 
     [HttpGet("insights")]
+    [Authorize]
     public async Task<IActionResult> GetQualityInsights(
         [FromQuery] string? module,
         [FromQuery] string? analysisType,

@@ -58,7 +58,7 @@ export function EquipmentListPage() {
       if (status) params.set('status', status)
       params.set('page', String(page))
       params.set('pageSize', String(pageSize))
-      const res = await apiClient.get(`/api/v1/equipment?${params}`)
+      const res = await apiClient.get(`/equipment?${params}`)
       return res.data
     },
   })

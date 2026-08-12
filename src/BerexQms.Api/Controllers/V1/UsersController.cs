@@ -17,7 +17,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/users")]
-[Authorize]
 public sealed class UsersController : ControllerBase
 {
     private readonly ISender _sender;
@@ -28,6 +27,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? status,
@@ -43,6 +43,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetUserByIdQuery(id), cancellationToken);
@@ -54,6 +55,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
@@ -68,6 +70,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/deactivate")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new DeactivateUserCommand(id), cancellationToken);
@@ -79,6 +82,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/activate")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> Activate(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ActivateUserCommand(id), cancellationToken);
@@ -90,6 +94,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/roles/{roleId:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> AssignRole(Guid id, Guid roleId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new AssignRoleCommand(id, roleId), cancellationToken);
@@ -101,6 +106,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/roles/{roleId:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> RemoveRole(Guid id, Guid roleId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new RemoveRoleCommand(id, roleId), cancellationToken);
@@ -112,6 +118,7 @@ public sealed class UsersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/change-password")]
+    [Authorize(Roles = "Administrator,SuperAdministrator")]
     public async Task<IActionResult> ChangePassword(Guid id, [FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(

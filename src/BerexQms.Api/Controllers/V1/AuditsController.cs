@@ -18,7 +18,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/audits")]
-[Authorize]
 public sealed class AuditsController : ControllerBase
 {
     private readonly ISender _sender;
@@ -29,6 +28,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] int? year,
@@ -45,6 +45,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetAuditPlanByIdQuery(id), cancellationToken);
@@ -56,6 +57,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,Auditor")]
     public async Task<IActionResult> Create(
         [FromBody] CreateAuditPlanRequest request, CancellationToken cancellationToken)
     {
@@ -71,6 +73,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/audits")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,Auditor")]
     public async Task<IActionResult> AddAudit(
         Guid id, [FromBody] AddAuditRequest request, CancellationToken cancellationToken)
     {
@@ -88,6 +91,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/audits/{auditId:guid}/start")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,Auditor")]
     public async Task<IActionResult> StartAudit(
         Guid id, Guid auditId, CancellationToken cancellationToken)
     {
@@ -100,6 +104,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/audits/{auditId:guid}/complete")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,Auditor")]
     public async Task<IActionResult> CompleteAudit(
         Guid id, Guid auditId, [FromBody] CompleteAuditRequest request,
         CancellationToken cancellationToken)
@@ -116,6 +121,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpPut("{id:guid}/audits/{auditId:guid}/cancel")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,Auditor")]
     public async Task<IActionResult> CancelAudit(
         Guid id, Guid auditId, CancellationToken cancellationToken)
     {
@@ -128,6 +134,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/audits/{auditId:guid}/findings")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,Auditor")]
     public async Task<IActionResult> RecordFinding(
         Guid id, Guid auditId, [FromBody] RecordFindingRequest request,
         CancellationToken cancellationToken)
@@ -146,6 +153,7 @@ public sealed class AuditsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/audits/{auditId:guid}/checklists")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,Auditor")]
     public async Task<IActionResult> AddChecklist(
         Guid id, Guid auditId, [FromBody] AddChecklistRequest request,
         CancellationToken cancellationToken)

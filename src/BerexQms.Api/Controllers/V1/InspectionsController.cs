@@ -19,7 +19,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/inspections")]
-[Authorize]
 public sealed class InspectionsController : ControllerBase
 {
     private readonly ISender _sender;
@@ -30,6 +29,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? type,
@@ -47,6 +47,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetInspectionByIdQuery(id), cancellationToken);
@@ -58,6 +59,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> Create(
         [FromBody] CreateInspectionRequest request, CancellationToken cancellationToken)
     {
@@ -77,6 +79,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/start")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> Start(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new StartInspectionCommand(id), cancellationToken);
@@ -88,6 +91,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/measurements")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> RecordMeasurement(
         Guid id, [FromBody] RecordMeasurementRequest request, CancellationToken cancellationToken)
     {
@@ -106,6 +110,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/complete")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> Complete(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new CompleteInspectionCommand(id), cancellationToken);
@@ -117,6 +122,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/approve")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Approve(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ApproveInspectionCommand(id), cancellationToken);
@@ -128,6 +134,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/reject")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Reject(
         Guid id, [FromBody] RejectInspectionRequest request, CancellationToken cancellationToken)
     {
@@ -140,6 +147,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/disposition")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> SetDisposition(
         Guid id, [FromBody] SetDispositionRequest request, CancellationToken cancellationToken)
     {
@@ -155,6 +163,7 @@ public sealed class InspectionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/cancel")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new CancelInspectionCommand(id), cancellationToken);

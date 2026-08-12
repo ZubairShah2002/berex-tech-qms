@@ -23,7 +23,7 @@ export function CourseCreatePage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post('/api/v1/training/courses', {
+      const res = await apiClient.post('/training/courses', {
         code: form.code,
         name: form.name,
         description: form.description || null,

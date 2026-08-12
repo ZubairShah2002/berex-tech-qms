@@ -16,7 +16,9 @@ public abstract class RepositoryBase<T> : IRepository<T> where T : AggregateRoot
 
     public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await DbSet.FindAsync(new object[] { id }, cancellationToken);
+        // Use FirstOrDefaultAsync instead of FindAsync so that the global
+        // tenant query filter is applied. FindAsync bypasses query filters.
+        return await DbSet.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
     }
 
     public virtual async Task<IReadOnlyList<T>> ListAllAsync(CancellationToken cancellationToken = default)

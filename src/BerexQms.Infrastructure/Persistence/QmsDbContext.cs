@@ -94,6 +94,40 @@ public class QmsDbContext : DbContext, IUnitOfWork
     {
         modelBuilder.HasDefaultSchema("shared");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(QmsDbContext).Assembly);
+
+        // Global query filters for tenant isolation.
+        // Every Entity<Guid> has a TenantId property — apply a filter so all queries
+        // are automatically scoped to the current tenant. This is defense-in-depth
+        // alongside PostgreSQL RLS.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            // Only filter entities that inherit from Entity<Guid> (which includes AggregateRoot<Guid>)
+            if (!typeof(SharedKernel.Abstractions.Entity<Guid>).IsAssignableFrom(entityType.ClrType))
+                continue;
+
+            // Skip shared/system entities that don't need tenant scoping
+            if (entityType.ClrType == typeof(AuditLogEntry)
+                || entityType.ClrType == typeof(DomainEventOutboxEntry))
+                continue;
+
+            var parameter = System.Linq.Expressions.Expression.Parameter(entityType.ClrType, "e");
+            var tenantIdProperty = System.Linq.Expressions.Expression.Property(parameter, nameof(SharedKernel.Abstractions.Entity<Guid>.TenantId));
+            var tenantIdValue = System.Linq.Expressions.Expression.Property(tenantIdProperty, "Value");
+            var currentTenantExpr = System.Linq.Expressions.Expression.Property(
+                System.Linq.Expressions.Expression.Constant(_tenantContext), nameof(ITenantContext.CurrentTenantId));
+            var currentTenantValue = System.Linq.Expressions.Expression.Property(currentTenantExpr, "Value");
+            var emptyGuid = System.Linq.Expressions.Expression.Constant(Guid.Empty);
+
+            // Filter: TenantId == currentTenantId OR currentTenantId == Guid.Empty
+            // (Guid.Empty means no tenant set — allow passthrough for system/seed operations)
+            var equals = System.Linq.Expressions.Expression.Equal(tenantIdValue, currentTenantValue);
+            var isEmpty = System.Linq.Expressions.Expression.Equal(currentTenantValue, emptyGuid);
+            var combined = System.Linq.Expressions.Expression.OrElse(equals, isEmpty);
+
+            var lambda = System.Linq.Expressions.Expression.Lambda(combined, parameter);
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+        }
+
         base.OnModelCreating(modelBuilder);
     }
 

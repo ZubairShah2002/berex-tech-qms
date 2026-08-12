@@ -93,7 +93,7 @@ export function SpcListPage() {
       if (status) params.set('status', status)
       params.set('page', String(page))
       params.set('pageSize', String(pageSize))
-      const res = await apiClient.get(`/api/v1/spc/charts?${params}`)
+      const res = await apiClient.get(`/spc/charts?${params}`)
       return res.data
     },
   })

@@ -20,7 +20,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/documents")]
-[Authorize]
 public sealed class DocumentsController : ControllerBase
 {
     private readonly ISender _sender;
@@ -31,6 +30,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? documentType,
@@ -48,6 +48,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetDocumentByIdQuery(id), cancellationToken);
@@ -59,6 +60,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Create(
         [FromBody] CreateDocumentRequest request, CancellationToken cancellationToken)
     {
@@ -76,6 +78,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/versions")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> CreateVersion(
         Guid id, [FromBody] CreateVersionRequest request, CancellationToken cancellationToken)
     {
@@ -91,6 +94,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/versions/{versionId:guid}/submit-for-review")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> SubmitForReview(
         Guid id, Guid versionId, CancellationToken cancellationToken)
     {
@@ -105,6 +109,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/versions/{versionId:guid}/start-approval")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> StartApproval(
         Guid id, Guid versionId, [FromBody] StartApprovalRequest request,
         CancellationToken cancellationToken)
@@ -121,6 +126,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/versions/{versionId:guid}/record-approval")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> RecordApproval(
         Guid id, Guid versionId, [FromBody] RecordApprovalRequest request,
         CancellationToken cancellationToken)
@@ -137,6 +143,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/versions/{versionId:guid}/release")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> ReleaseVersion(
         Guid id, Guid versionId, [FromBody] ReleaseVersionRequest request,
         CancellationToken cancellationToken)
@@ -153,6 +160,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/versions/{versionId:guid}/distributions")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> AddDistribution(
         Guid id, Guid versionId, [FromBody] AddDistributionRequest request,
         CancellationToken cancellationToken)
@@ -169,6 +177,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/distributions/{distributionId:guid}/acknowledge")]
+    [Authorize]
     public async Task<IActionResult> AcknowledgeDistribution(
         Guid id, Guid distributionId, CancellationToken cancellationToken)
     {
@@ -183,6 +192,7 @@ public sealed class DocumentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/make-obsolete")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> MakeObsolete(
         Guid id, CancellationToken cancellationToken)
     {

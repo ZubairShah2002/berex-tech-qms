@@ -25,7 +25,7 @@ export function QualificationCreatePage() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post('/api/v1/qualifications', {
+      const res = await apiClient.post('/qualifications', {
         code: form.code,
         name: form.name,
         description: form.description || null,

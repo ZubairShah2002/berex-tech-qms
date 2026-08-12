@@ -6,8 +6,13 @@ using BerexQms.SharedKernel.ValueObjects;
 
 namespace BerexQms.Domain.AuditManagement.Entities;
 
-public sealed class AuditRecord : Entity<Guid>
+public sealed class AuditRecord : Entity<Guid>, IAuditableEntity
 {
+    public string CreatedBy { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public string? ModifiedBy { get; set; }
+    public DateTime? ModifiedAt { get; set; }
+
     private readonly List<AuditFinding> _findings = [];
     private readonly List<AuditChecklist> _checklists = [];
 

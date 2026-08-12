@@ -559,7 +559,7 @@ export function AiDashboardPage() {
 
   const configsQuery = useQuery({
     queryKey: ['ai', 'configs'],
-    queryFn: () => apiClient.get<AiCapabilityConfigDto[]>('/api/v1/ai/capabilities').then(r => r.data),
+    queryFn: () => apiClient.get<AiCapabilityConfigDto[]>('/ai/capabilities').then(r => r.data),
   })
 
   const interactionsQuery = useQuery({
@@ -570,7 +570,7 @@ export function AiDashboardPage() {
       params.set('pageSize', String(pageSize))
       if (capFilter) params.set('capability', capFilter)
       if (statusFilter) params.set('status', statusFilter)
-      return apiClient.get<PagedResult<AiInteractionDto>>(`/api/v1/ai/interactions?${params}`).then(r => r.data)
+      return apiClient.get<PagedResult<AiInteractionDto>>(`/ai/interactions?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'interactions',
   })
@@ -583,14 +583,14 @@ export function AiDashboardPage() {
       params.set('pageSize', String(pageSize))
       if (modelCapFilter) params.set('capability', modelCapFilter)
       if (modelStatusFilter) params.set('status', modelStatusFilter)
-      return apiClient.get<PagedResult<AiModelDto>>(`/api/v1/ai/models?${params}`).then(r => r.data)
+      return apiClient.get<PagedResult<AiModelDto>>(`/ai/models?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'models',
   })
 
   const myPermissionsQuery = useQuery({
     queryKey: ['ai', 'permissions', user?.id],
-    queryFn: () => apiClient.get<AiUserPermissionsDto>(`/api/v1/ai/permissions/${user!.id}`).then(r => r.data),
+    queryFn: () => apiClient.get<AiUserPermissionsDto>(`/ai/permissions/${user!.id}`).then(r => r.data),
     enabled: activeTab === 'permissions' && !!user?.id,
   })
 
@@ -602,14 +602,14 @@ export function AiDashboardPage() {
       params.set('pageSize', String(pageSize))
       if (logResultFilter) params.set('executionResult', logResultFilter)
       if (logLevelFilter) params.set('permissionLevel', logLevelFilter)
-      return apiClient.get<PagedResult<AiActionLogDto>>(`/api/v1/ai/actions/logs?${params}`).then(r => r.data)
+      return apiClient.get<PagedResult<AiActionLogDto>>(`/ai/actions/logs?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'actionLog',
   })
 
   const workflowDefinitionsQuery = useQuery({
     queryKey: ['ai', 'workflowDefinitions'],
-    queryFn: () => apiClient.get<AiWorkflowDefinitionDto[]>('/api/v1/ai/workflows/definitions').then(r => r.data),
+    queryFn: () => apiClient.get<AiWorkflowDefinitionDto[]>('/ai/workflows/definitions').then(r => r.data),
     enabled: activeTab === 'workflows',
   })
 
@@ -620,20 +620,20 @@ export function AiDashboardPage() {
       params.set('page', String(wfPage))
       params.set('pageSize', String(pageSize))
       if (wfStatusFilter) params.set('status', wfStatusFilter)
-      return apiClient.get<PagedResult<AiWorkflowExecutionDto>>(`/api/v1/ai/workflows/executions?${params}`).then(r => r.data)
+      return apiClient.get<PagedResult<AiWorkflowExecutionDto>>(`/ai/workflows/executions?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'workflows',
   })
 
   const contextStatsQuery = useQuery({
     queryKey: ['ai', 'contextStats'],
-    queryFn: () => apiClient.get<ContextStatsDto>('/api/v1/ai/context/stats').then(r => r.data),
+    queryFn: () => apiClient.get<ContextStatsDto>('/ai/context/stats').then(r => r.data),
     enabled: activeTab === 'knowledgeContext',
   })
 
   const knowledgeSourcesQuery = useQuery({
     queryKey: ['ai', 'knowledgeSources'],
-    queryFn: () => apiClient.get<KnowledgeSourceDto[]>('/api/v1/ai/knowledge-sources').then(r => r.data),
+    queryFn: () => apiClient.get<KnowledgeSourceDto[]>('/ai/knowledge-sources').then(r => r.data),
     enabled: activeTab === 'knowledgeContext',
   })
 
@@ -644,7 +644,7 @@ export function AiDashboardPage() {
       params.set('searchTerm', searchSubmitted)
       if (contextModuleFilter) params.set('sourceModule', contextModuleFilter)
       params.set('maxResults', '20')
-      return apiClient.get<ContextSearchResultDto[]>(`/api/v1/ai/context/search?${params}`).then(r => r.data)
+      return apiClient.get<ContextSearchResultDto[]>(`/ai/context/search?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'knowledgeContext' && searchSubmitted.length >= 2,
   })
@@ -656,14 +656,14 @@ export function AiDashboardPage() {
       const params = new URLSearchParams()
       if (recTypeFilter) params.set('recommendationType', recTypeFilter)
       if (recStatusFilter) params.set('status', recStatusFilter)
-      return apiClient.get<AiRecommendationDto[]>(`/api/v1/ai/recommendations?${params}`).then(r => r.data)
+      return apiClient.get<AiRecommendationDto[]>(`/ai/recommendations?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'aiInsights',
   })
 
   const riskSummaryQuery = useQuery({
     queryKey: ['ai', 'riskSummary'],
-    queryFn: () => apiClient.get<RiskSummaryDto>('/api/v1/ai/risk-summary').then(r => r.data),
+    queryFn: () => apiClient.get<RiskSummaryDto>('/ai/risk-summary').then(r => r.data),
     enabled: activeTab === 'aiInsights',
   })
 
@@ -672,7 +672,7 @@ export function AiDashboardPage() {
     queryFn: () => {
       const params = new URLSearchParams()
       if (insightModuleFilter) params.set('module', insightModuleFilter)
-      return apiClient.get<QualityInsightDto[]>(`/api/v1/ai/insights?${params}`).then(r => r.data)
+      return apiClient.get<QualityInsightDto[]>(`/ai/insights?${params}`).then(r => r.data)
     },
     enabled: activeTab === 'aiInsights',
   })
@@ -680,44 +680,44 @@ export function AiDashboardPage() {
   // Sprint 16: Provider queries
   const providerStatusQuery = useQuery({
     queryKey: ['ai', 'providerStatus'],
-    queryFn: () => apiClient.get<AiProviderStatusDto[]>('/api/v1/ai/providers/status').then(r => r.data),
+    queryFn: () => apiClient.get<AiProviderStatusDto[]>('/ai/providers/status').then(r => r.data),
     enabled: activeTab === 'providers',
   })
 
   const taskMappingsQuery = useQuery({
     queryKey: ['ai', 'taskMappings'],
-    queryFn: () => apiClient.get<AiTaskMappingDto[]>('/api/v1/ai/providers/task-mappings').then(r => r.data),
+    queryFn: () => apiClient.get<AiTaskMappingDto[]>('/ai/providers/task-mappings').then(r => r.data),
     enabled: activeTab === 'providers',
   })
 
   const usageSummaryQuery = useQuery({
     queryKey: ['ai', 'usageSummary'],
-    queryFn: () => apiClient.get<AiUsageSummaryDto>('/api/v1/ai/usage/summary').then(r => r.data),
+    queryFn: () => apiClient.get<AiUsageSummaryDto>('/ai/usage/summary').then(r => r.data),
     enabled: activeTab === 'providers',
   })
 
   const localModelsQuery = useQuery({
     queryKey: ['ai', 'localModels'],
-    queryFn: () => apiClient.get<AiLocalModelDto[]>('/api/v1/ai/providers/local/models').then(r => r.data),
+    queryFn: () => apiClient.get<AiLocalModelDto[]>('/ai/providers/local/models').then(r => r.data),
     enabled: activeTab === 'providers',
   })
 
   // Sprint 18: Settings queries
   const userPreferencesQuery = useQuery({
     queryKey: ['ai', 'preferences'],
-    queryFn: () => apiClient.get<AiUserPreferenceDto>('/api/v1/ai/preferences').then(r => r.data),
+    queryFn: () => apiClient.get<AiUserPreferenceDto>('/ai/preferences').then(r => r.data),
     enabled: activeTab === 'settings',
   })
 
   const governancePolicyQuery = useQuery({
     queryKey: ['ai', 'governance'],
-    queryFn: () => apiClient.get<AiGovernancePolicyDto>('/api/v1/ai/governance').then(r => r.data).catch(() => null),
+    queryFn: () => apiClient.get<AiGovernancePolicyDto>('/ai/governance').then(r => r.data).catch(() => null),
     enabled: activeTab === 'settings',
   })
 
   const effectivePolicyQuery = useQuery({
     queryKey: ['ai', 'effectivePolicy'],
-    queryFn: () => apiClient.get<AiEffectivePolicyDto>('/api/v1/ai/policy/effective').then(r => r.data),
+    queryFn: () => apiClient.get<AiEffectivePolicyDto>('/ai/policy/effective').then(r => r.data),
     enabled: activeTab === 'settings',
   })
 
@@ -749,7 +749,7 @@ export function AiDashboardPage() {
 
   const reviewRecommendationMutation = useMutation({
     mutationFn: (data: { id: string; action: string; notes?: string }) =>
-      apiClient.post(`/api/v1/ai/recommendations/${data.id}/review`, { action: data.action, notes: data.notes }),
+      apiClient.post(`/ai/recommendations/${data.id}/review`, { action: data.action, notes: data.notes }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai', 'recommendations'] })
       queryClient.invalidateQueries({ queryKey: ['ai', 'riskSummary'] })
@@ -758,7 +758,7 @@ export function AiDashboardPage() {
 
   const dismissRecommendationMutation = useMutation({
     mutationFn: (id: string) =>
-      apiClient.post(`/api/v1/ai/recommendations/${id}/dismiss`),
+      apiClient.post(`/ai/recommendations/${id}/dismiss`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai', 'recommendations'] })
       queryClient.invalidateQueries({ queryKey: ['ai', 'riskSummary'] })
@@ -767,25 +767,25 @@ export function AiDashboardPage() {
 
   const toggleMutation = useMutation({
     mutationFn: (data: { capability: string; enable: boolean }) =>
-      apiClient.post('/api/v1/ai/capabilities/toggle', data),
+      apiClient.post('/ai/capabilities/toggle', data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai', 'configs'] }),
   })
 
   const executeWorkflowMutation = useMutation({
     mutationFn: (workflowDefinitionId: string) =>
-      apiClient.post<AiWorkflowExecutionDto>('/api/v1/ai/workflows/execute', { workflowDefinitionId }),
+      apiClient.post<AiWorkflowExecutionDto>('/ai/workflows/execute', { workflowDefinitionId }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai', 'workflowExecutions'] }),
   })
 
   const confirmWorkflowMutation = useMutation({
     mutationFn: (data: { executionId: string; confirm: boolean }) =>
-      apiClient.post<AiWorkflowExecutionDto>(`/api/v1/ai/workflows/executions/${data.executionId}/confirm`, { confirm: data.confirm }),
+      apiClient.post<AiWorkflowExecutionDto>(`/ai/workflows/executions/${data.executionId}/confirm`, { confirm: data.confirm }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ai', 'workflowExecutions'] }),
   })
 
   const confirmActionMutation = useMutation({
     mutationFn: (data: { actionLogId: string; confirm: boolean }) =>
-      apiClient.post<AiActionLogDto>(`/api/v1/ai/actions/${data.actionLogId}/confirm`, { confirm: data.confirm }),
+      apiClient.post<AiActionLogDto>(`/ai/actions/${data.actionLogId}/confirm`, { confirm: data.confirm }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai', 'actionLogs'] })
       setConfirmationRequest(null)
@@ -795,7 +795,7 @@ export function AiDashboardPage() {
   // Sprint 18: Settings mutations
   const updatePreferencesMutation = useMutation({
     mutationFn: (data: { aiEnabled: boolean; preferredProvider: string | null; confirmationRequired: boolean; preferredLanguage: string | null; enabledTaskTypes: string[] | null }) =>
-      apiClient.put('/api/v1/ai/preferences', data),
+      apiClient.put('/ai/preferences', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai', 'preferences'] })
       queryClient.invalidateQueries({ queryKey: ['ai', 'effectivePolicy'] })
@@ -806,7 +806,7 @@ export function AiDashboardPage() {
 
   const updateGovernanceMutation = useMutation({
     mutationFn: (data: { aiEnabled: boolean; allowedProviders: string[] | null; defaultProvider: string | null; allowedTaskTypes: string[] | null; maxDailyRequestsPerUser: number | null; maxMonthlyRequestsPerTenant: number | null; requireHumanConfirmation: boolean }) =>
-      apiClient.put('/api/v1/ai/governance', data),
+      apiClient.put('/ai/governance', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai', 'governance'] })
       queryClient.invalidateQueries({ queryKey: ['ai', 'effectivePolicy'] })

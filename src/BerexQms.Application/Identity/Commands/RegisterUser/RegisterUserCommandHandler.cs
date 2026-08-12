@@ -45,20 +45,19 @@ public sealed class RegisterUserCommandHandler : ICommandHandler<RegisterUserCom
             request.Department,
             request.JobTitle);
 
-        if (request.RoleIds is { Count: > 0 })
+        // Security: Self-registration ignores RoleIds to prevent privilege escalation.
+        // New users receive only the default "Viewer" role. Administrators can
+        // assign additional roles after registration via the user management API.
+        var defaultRole = await _roleRepository.GetByNameAsync("Viewer", cancellationToken);
+        if (defaultRole != null)
         {
-            var roles = await _roleRepository.GetByIdsAsync(request.RoleIds, cancellationToken);
-            foreach (var role in roles)
-            {
-                user.AssignRole(role.Id, role.Name, "system");
-            }
+            user.AssignRole(defaultRole.Id, defaultRole.Name, "system");
         }
 
         await _userRepository.AddAsync(user, cancellationToken);
 
-        var roleNames = request.RoleIds is { Count: > 0 }
-            ? user.UserRoles.Select(ur => ur.Role?.Name ?? "").Where(n => n != "").ToList()
-            : new List<string>();
+        var roleNames = user.UserRoles
+            .Select(ur => ur.Role?.Name ?? "").Where(n => n != "").ToList();
 
         return new UserDto(
             user.Id,

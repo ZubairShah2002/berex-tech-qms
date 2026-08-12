@@ -25,7 +25,7 @@ export function QualificationDetailPage() {
   const { data, isLoading, error } = useQuery<QualificationDto>({
     queryKey: ['qualification', id],
     queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/qualifications/${id}`)
+      const res = await apiClient.get(`/qualifications/${id}`)
       return res.data
     },
     enabled: !!id,

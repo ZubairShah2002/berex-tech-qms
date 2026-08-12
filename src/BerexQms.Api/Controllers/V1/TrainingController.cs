@@ -35,6 +35,7 @@ public sealed class QualificationsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] bool? isActive,
@@ -49,6 +50,7 @@ public sealed class QualificationsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetQualificationQuery(id), cancellationToken);
@@ -57,6 +59,7 @@ public sealed class QualificationsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> Create(
         [FromBody] CreateQualificationRequest request,
         CancellationToken cancellationToken)
@@ -77,6 +80,7 @@ public sealed class QualificationsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> Update(
         Guid id,
         [FromBody] UpdateQualificationRequest request,
@@ -112,6 +116,7 @@ public sealed class TrainingController : ControllerBase
     // ── Courses ──────────────────────────────────────────────────────
 
     [HttpGet("courses")]
+    [Authorize]
     public async Task<IActionResult> ListCourses(
         [FromQuery] string? search,
         [FromQuery] Guid? qualificationId,
@@ -126,6 +131,7 @@ public sealed class TrainingController : ControllerBase
     }
 
     [HttpPost("courses")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> CreateCourse(
         [FromBody] CreateCourseRequest request,
         CancellationToken cancellationToken)
@@ -145,6 +151,7 @@ public sealed class TrainingController : ControllerBase
     }
 
     [HttpPut("courses/{id:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> UpdateCourse(
         Guid id,
         [FromBody] UpdateCourseRequest request,
@@ -165,6 +172,7 @@ public sealed class TrainingController : ControllerBase
     // ── Assignments ──────────────────────────────────────────────────
 
     [HttpGet("assignments")]
+    [Authorize]
     public async Task<IActionResult> ListAssignments(
         [FromQuery] Guid? employeeId,
         [FromQuery] string? status,
@@ -179,6 +187,7 @@ public sealed class TrainingController : ControllerBase
     }
 
     [HttpGet("assignments/{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetAssignment(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetAssignmentQuery(id), cancellationToken);
@@ -187,6 +196,7 @@ public sealed class TrainingController : ControllerBase
     }
 
     [HttpPost("assignments")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> CreateAssignment(
         [FromBody] CreateAssignmentRequest request,
         CancellationToken cancellationToken)
@@ -202,6 +212,7 @@ public sealed class TrainingController : ControllerBase
     }
 
     [HttpPut("assignments/{id:guid}/complete")]
+    [Authorize]
     public async Task<IActionResult> CompleteAssignment(
         Guid id,
         [FromBody] CompleteAssignmentRequest request,
@@ -221,6 +232,7 @@ public sealed class TrainingController : ControllerBase
     // ── Skill Matrix & Expiring ──────────────────────────────────────
 
     [HttpGet("skill-matrix")]
+    [Authorize]
     public async Task<IActionResult> GetSkillMatrix(
         [FromQuery] string? department,
         [FromQuery] string? productFamily,
@@ -233,6 +245,7 @@ public sealed class TrainingController : ControllerBase
     }
 
     [HttpGet("expiring")]
+    [Authorize]
     public async Task<IActionResult> GetExpiringQualifications(
         [FromQuery] int withinDays = 30,
         CancellationToken cancellationToken = default)
@@ -258,6 +271,7 @@ public sealed class EmployeeCompetenciesController : ControllerBase
     }
 
     [HttpGet("{employeeId:guid}/competencies")]
+    [Authorize]
     public async Task<IActionResult> GetCompetencies(Guid employeeId, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
@@ -267,6 +281,7 @@ public sealed class EmployeeCompetenciesController : ControllerBase
     }
 
     [HttpGet("{employeeId:guid}/competencies/validate")]
+    [Authorize]
     public async Task<IActionResult> ValidateQualification(
         Guid employeeId,
         [FromQuery] Guid qualificationId,
@@ -279,6 +294,7 @@ public sealed class EmployeeCompetenciesController : ControllerBase
     }
 
     [HttpPost("{employeeId:guid}/competencies")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> ManageCompetency(
         Guid employeeId,
         [FromBody] ManageCompetencyRequest request,

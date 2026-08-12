@@ -14,7 +14,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/sampling-plans")]
-[Authorize]
 public sealed class SamplingPlansController : ControllerBase
 {
     private readonly ISender _sender;
@@ -25,6 +24,7 @@ public sealed class SamplingPlansController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] Guid? partId,
         [FromQuery] string? inspectionType,
@@ -41,6 +41,7 @@ public sealed class SamplingPlansController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetSamplingPlanByIdQuery(id), cancellationToken);
@@ -52,6 +53,7 @@ public sealed class SamplingPlansController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Create(
         [FromBody] CreateSamplingPlanRequest request, CancellationToken cancellationToken)
     {
@@ -68,6 +70,7 @@ public sealed class SamplingPlansController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Update(
         Guid id, [FromBody] UpdateSamplingPlanRequest request, CancellationToken cancellationToken)
     {
@@ -85,6 +88,7 @@ public sealed class SamplingPlansController : ControllerBase
     }
 
     [HttpPost("{id:guid}/activate")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Activate(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ToggleSamplingPlanCommand(id, true), cancellationToken);
@@ -96,6 +100,7 @@ public sealed class SamplingPlansController : ControllerBase
     }
 
     [HttpPost("{id:guid}/deactivate")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ToggleSamplingPlanCommand(id, false), cancellationToken);

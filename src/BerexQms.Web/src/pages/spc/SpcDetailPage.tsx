@@ -240,7 +240,7 @@ export function SpcDetailPage() {
   const { data: chart, isLoading } = useQuery<ChartDetail>({
     queryKey: ['spc-chart', id],
     queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/spc/charts/${id}`)
+      const res = await apiClient.get(`/spc/charts/${id}`)
       return res.data
     },
     enabled: Boolean(id),
@@ -262,7 +262,7 @@ export function SpcDetailPage() {
   }
 
   const addPointMutation = useMutation({
-    mutationFn: () => apiClient.post(`/api/v1/spc/charts/${id}/data-points`, {
+    mutationFn: () => apiClient.post(`/spc/charts/${id}/data-points`, {
       value: Number(addForm.value),
       subgroupValues: addForm.subgroupValues || null,
       sampleSize: Number(addForm.sampleSize),
@@ -278,13 +278,13 @@ export function SpcDetailPage() {
   })
 
   const recalcMutation = useMutation({
-    mutationFn: () => apiClient.post(`/api/v1/spc/charts/${id}/recalculate`),
+    mutationFn: () => apiClient.post(`/spc/charts/${id}/recalculate`),
     onSuccess: invalidate,
     onError: handleError,
   })
 
   const deactivateMutation = useMutation({
-    mutationFn: () => apiClient.post(`/api/v1/spc/charts/${id}/deactivate`),
+    mutationFn: () => apiClient.post(`/spc/charts/${id}/deactivate`),
     onSuccess: invalidate,
     onError: handleError,
   })

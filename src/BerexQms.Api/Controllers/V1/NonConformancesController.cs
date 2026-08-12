@@ -22,7 +22,6 @@ namespace BerexQms.Api.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/non-conformances")]
-[Authorize]
 public sealed class NonConformancesController : ControllerBase
 {
     private readonly ISender _sender;
@@ -33,6 +32,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> List(
         [FromQuery] string? search,
         [FromQuery] string? status,
@@ -52,6 +52,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetNonConformanceByIdQuery(id), cancellationToken);
@@ -63,6 +64,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpGet("{id:guid}/similar")]
+    [Authorize]
     public async Task<IActionResult> FindSimilar(
         Guid id,
         [FromQuery] int lookbackDays = 90,
@@ -80,6 +82,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> Create(
         [FromBody] CreateNonConformanceRequest request, CancellationToken cancellationToken)
     {
@@ -101,6 +104,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/assign-investigator")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> AssignInvestigator(
         Guid id, [FromBody] AssignInvestigatorRequest request, CancellationToken cancellationToken)
     {
@@ -115,6 +119,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/containment-actions")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> AddContainmentAction(
         Guid id, [FromBody] AddContainmentActionRequest request, CancellationToken cancellationToken)
     {
@@ -129,6 +134,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/containment-actions/{actionId:guid}/verify")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> VerifyContainment(
         Guid id, Guid actionId, CancellationToken cancellationToken)
     {
@@ -143,6 +149,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPut("{id:guid}/investigation")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> SubmitInvestigation(
         Guid id, [FromBody] SubmitInvestigationRequest request, CancellationToken cancellationToken)
     {
@@ -158,6 +165,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPut("{id:guid}/disposition")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> RecordDisposition(
         Guid id, [FromBody] RecordDispositionRequest request, CancellationToken cancellationToken)
     {
@@ -172,6 +180,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/request-more-info")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer,Inspector")]
     public async Task<IActionResult> RequestMoreInfo(
         Guid id, [FromBody] RequestMoreInfoRequest request, CancellationToken cancellationToken)
     {
@@ -186,6 +195,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/close-as-duplicate")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager,QualityEngineer")]
     public async Task<IActionResult> CloseAsDuplicate(
         Guid id, [FromBody] CloseAsDuplicateRequest request, CancellationToken cancellationToken)
     {
@@ -200,6 +210,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/reopen")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> Reopen(
         Guid id, [FromBody] ReopenRequest request, CancellationToken cancellationToken)
     {
@@ -214,6 +225,7 @@ public sealed class NonConformancesController : ControllerBase
     }
 
     [HttpPost("{id:guid}/link-capa")]
+    [Authorize(Roles = "Administrator,SuperAdministrator,QualityManager")]
     public async Task<IActionResult> LinkCapa(
         Guid id, [FromBody] LinkCapaRequest request, CancellationToken cancellationToken)
     {

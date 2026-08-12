@@ -104,10 +104,12 @@ public static class DependencyInjection
     private static void AddPersistence(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<AuditTrailInterceptor>();
+        services.AddScoped<TenantConnectionInterceptor>();
 
         services.AddDbContext<QmsDbContext>((sp, options) =>
         {
-            var interceptor = sp.GetRequiredService<AuditTrailInterceptor>();
+            var auditInterceptor = sp.GetRequiredService<AuditTrailInterceptor>();
+            var tenantInterceptor = sp.GetRequiredService<TenantConnectionInterceptor>();
 
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
@@ -121,10 +123,11 @@ public static class DependencyInjection
                         errorCodesToAdd: null);
                 });
 
-            options.AddInterceptors(interceptor);
+            options.AddInterceptors(tenantInterceptor, auditInterceptor);
         });
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<QmsDbContext>());
+        services.AddScoped<IExecutionStrategyFactory, EfExecutionStrategyFactory>();
     }
 
     private static void AddRedisCache(this IServiceCollection services, IConfiguration configuration)

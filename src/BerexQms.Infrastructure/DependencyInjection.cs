@@ -137,20 +137,29 @@ public static class DependencyInjection
         if (!string.IsNullOrWhiteSpace(redisConnection))
         {
             services.AddSingleton<IConnectionMultiplexer>(_ =>
-                ConnectionMultiplexer.Connect(redisConnection));
+            {
+                var options = ConfigurationOptions.Parse(redisConnection);
+                options.AbortOnConnectFail = false; // Don't crash if Redis is temporarily unavailable
+                return ConnectionMultiplexer.Connect(options);
+            });
 
             services.AddScoped<ICacheService, RedisCacheService>();
         }
 
-        services.AddHealthChecks()
+        var healthChecks = services.AddHealthChecks()
             .AddNpgSql(
                 configuration.GetConnectionString("DefaultConnection")!,
                 name: "postgresql",
-                tags: new[] { "db", "ready" })
-            .AddRedis(
-                redisConnection ?? "localhost:6379",
+                tags: new[] { "db", "ready" });
+
+        // Only add Redis health check if Redis is actually configured
+        if (!string.IsNullOrWhiteSpace(redisConnection))
+        {
+            healthChecks.AddRedis(
+                redisConnection,
                 name: "redis",
                 tags: new[] { "cache", "ready" });
+        }
     }
 
     private static void AddMinioStorage(this IServiceCollection services, IConfiguration configuration)

@@ -35,8 +35,9 @@ COPY --from=api-build /app/publish .
 COPY --from=frontend-build /app/dist ./wwwroot
 COPY docker/init-db.sql /app/init-db.sql
 
-# Render uses PORT env var; default to 10000
-ENV ASPNETCORE_URLS=http://+:${PORT:-10000}
+# Port is configured at runtime via PORT env var (handled in Program.cs)
+# Render default port is 10000; fallback to 5000 for local Docker
+ENV PORT=10000
 EXPOSE 10000
 
 ENTRYPOINT ["dotnet", "BerexQms.Api.dll"]

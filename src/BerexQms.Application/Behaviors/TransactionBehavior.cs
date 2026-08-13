@@ -9,11 +9,13 @@ namespace BerexQms.Application.Behaviors;
 /// Pipeline behavior that wraps command execution in a unit-of-work transaction.
 /// Only applies to requests implementing <see cref="ICommand"/> or <see cref="ICommand{TResponse}"/>;
 /// queries pass through without transactional wrapping.
+/// Uses the IExecutionStrategyFactory to support retrying execution strategies.
 /// </summary>
 /// <typeparam name="TRequest">The request type.</typeparam>
 /// <typeparam name="TResponse">The response type.</typeparam>
 public sealed class TransactionBehavior<TRequest, TResponse>(
     IUnitOfWork unitOfWork,
+    IExecutionStrategyFactory executionStrategyFactory,
     ILogger<TransactionBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -30,29 +32,32 @@ public sealed class TransactionBehavior<TRequest, TResponse>(
 
         var requestName = typeof(TRequest).Name;
 
-        logger.LogDebug("Beginning transaction for {RequestName}", requestName);
-
-        await unitOfWork.BeginTransactionAsync(cancellationToken);
-
-        try
+        return await executionStrategyFactory.ExecuteAsync(async () =>
         {
-            var response = await next();
+            logger.LogDebug("Beginning transaction for {RequestName}", requestName);
 
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-            await unitOfWork.CommitTransactionAsync(cancellationToken);
+            await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-            logger.LogDebug("Committed transaction for {RequestName}", requestName);
+            try
+            {
+                var response = await next();
 
-            return response;
-        }
-        catch
-        {
-            logger.LogWarning("Rolling back transaction for {RequestName}", requestName);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await unitOfWork.CommitTransactionAsync(cancellationToken);
 
-            await unitOfWork.RollbackTransactionAsync(cancellationToken);
+                logger.LogDebug("Committed transaction for {RequestName}", requestName);
 
-            throw;
-        }
+                return response;
+            }
+            catch
+            {
+                logger.LogWarning("Rolling back transaction for {RequestName}", requestName);
+
+                await unitOfWork.RollbackTransactionAsync(cancellationToken);
+
+                throw;
+            }
+        });
     }
 
     private static bool IsCommand()

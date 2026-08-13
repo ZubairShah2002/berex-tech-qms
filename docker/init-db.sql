@@ -184,13 +184,13 @@ ALTER TABLE identity.roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE identity.permissions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_users ON identity.users
-    USING (tenant_id = shared.current_tenant_id());
+    USING (tenant_id = shared.current_tenant_id() OR shared.current_tenant_id() IS NULL);
 
 CREATE POLICY tenant_isolation_roles ON identity.roles
-    USING (tenant_id = shared.current_tenant_id());
+    USING (tenant_id = shared.current_tenant_id() OR shared.current_tenant_id() IS NULL);
 
 CREATE POLICY tenant_isolation_permissions ON identity.permissions
-    USING (tenant_id = shared.current_tenant_id());
+    USING (tenant_id = shared.current_tenant_id() OR shared.current_tenant_id() IS NULL);
 
 -- =============================================================================
 -- Product Catalog Module Tables
@@ -529,7 +529,7 @@ VALUES (
     'System',
     'Administrator',
     'System Administrator',
-    '$2a$12$LJ3m4ys3Gzl7v2VBKwmdxOYBNGTmN9pkLFNcHXNO5z7r5W5qR5d2W',
+    '$2b$12$n3ny5tpavRzQNZ878V0vweKMs.zQAwHRRwklBr1wttd/FuOO0AtKK',
     'Active',
     'IT',
     'System Administrator',
@@ -1903,3 +1903,26 @@ ALTER TABLE ai_engine.ai_governance_policies ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY tenant_isolation_ai_governance_policies ON ai_engine.ai_governance_policies
     USING (tenant_id = shared.current_tenant_id());
+
+-- =============================================================================
+-- Grant permissions to the application database user
+-- =============================================================================
+-- The Docker Compose postgres service creates the database with POSTGRES_USER
+-- as the owner, so that user already has full access. These grants ensure that
+-- if a separate application user is created, it also has the necessary access.
+
+DO $$
+DECLARE
+    schema_name TEXT;
+BEGIN
+    FOR schema_name IN
+        SELECT unnest(ARRAY['shared','identity','catalog','inspection','ncr','capa','document','audit','supplier','calibration','training','spc','ai_engine'])
+    LOOP
+        EXECUTE format('GRANT USAGE ON SCHEMA %I TO PUBLIC', schema_name);
+        EXECUTE format('GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I TO PUBLIC', schema_name);
+        EXECUTE format('GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA %I TO PUBLIC', schema_name);
+        EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL PRIVILEGES ON TABLES TO PUBLIC', schema_name);
+        EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT ALL PRIVILEGES ON SEQUENCES TO PUBLIC', schema_name);
+    END LOOP;
+END;
+$$;

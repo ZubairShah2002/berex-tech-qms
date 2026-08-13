@@ -17,6 +17,30 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    // PaaS platforms set PORT env var — configure Kestrel to listen on it
+    var port = Environment.GetEnvironmentVariable("PORT");
+    if (!string.IsNullOrWhiteSpace(port))
+    {
+        builder.WebHost.UseUrls($"http://+:{port}");
+    }
+
+    // PaaS platforms (Render, Railway) provide DATABASE_URL — convert to Npgsql format
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        var npgsqlConn = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        builder.Configuration["ConnectionStrings:DefaultConnection"] = npgsqlConn;
+    }
+
+    // Redis URL from PaaS
+    var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+    if (!string.IsNullOrWhiteSpace(redisUrl))
+    {
+        builder.Configuration["ConnectionStrings:Redis"] = redisUrl;
+    }
+
     builder.Host.UseSerilog((context, services, configuration) => configuration
         .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
@@ -139,6 +163,9 @@ try
 
     var app = builder.Build();
 
+    // Self-initialize database on PaaS platforms (Render, Railway, etc.)
+    await BerexQms.Api.DatabaseInitializer.InitializeAsync(app);
+
     app.UseMiddleware<CorrelationIdMiddleware>();
     app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 
@@ -151,7 +178,7 @@ try
         };
     });
 
-    if (app.Environment.IsDevelopment())
+    if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
     {
         app.UseSwagger();
         app.UseSwaggerUI(options =>
@@ -170,6 +197,13 @@ try
 
     app.UseRateLimiter();
 
+    // Serve React SPA from wwwroot (for combined PaaS deployments)
+    if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
+    {
+        app.UseDefaultFiles();
+        app.UseStaticFiles();
+    }
+
     app.MapControllers();
 
     app.MapHealthChecks("/health");
@@ -181,6 +215,12 @@ try
     {
         Predicate = _ => false
     });
+
+    // SPA fallback — serve index.html for client-side routes
+    if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
+    {
+        app.MapFallbackToFile("index.html");
+    }
 
     app.Run();
 }

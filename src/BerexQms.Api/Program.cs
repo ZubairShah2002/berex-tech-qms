@@ -29,16 +29,47 @@ try
     if (!string.IsNullOrWhiteSpace(databaseUrl))
     {
         var uri = new Uri(databaseUrl);
-        var userInfo = uri.UserInfo.Split(':');
-        var npgsqlConn = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+        var userInfo = uri.UserInfo.Split(':', 2); // Split on first ':' only — password may contain ':'
+        var username = Uri.UnescapeDataString(userInfo[0]);
+        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+        var database = uri.AbsolutePath.TrimStart('/');
+        var npgsqlConn = $"Host={uri.Host};Port={uri.Port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
         builder.Configuration["ConnectionStrings:DefaultConnection"] = npgsqlConn;
     }
 
-    // Redis URL from PaaS
+    // PaaS platforms provide REDIS_URL as redis://host:port or rediss://user:pass@host:port
+    // StackExchange.Redis expects host:port,password=xxx format
     var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
     if (!string.IsNullOrWhiteSpace(redisUrl))
     {
-        builder.Configuration["ConnectionStrings:Redis"] = redisUrl;
+        try
+        {
+            var redisUri = new Uri(redisUrl);
+            var redisHost = redisUri.Host;
+            var redisPort = redisUri.Port > 0 ? redisUri.Port : 6379;
+            var redisConn = $"{redisHost}:{redisPort}";
+
+            // Extract password if present (redis://default:PASSWORD@host:port)
+            if (!string.IsNullOrWhiteSpace(redisUri.UserInfo))
+            {
+                var redisParts = redisUri.UserInfo.Split(':', 2);
+                if (redisParts.Length > 1 && !string.IsNullOrWhiteSpace(redisParts[1]))
+                    redisConn += $",password={Uri.UnescapeDataString(redisParts[1])}";
+            }
+
+            // Render's free Redis uses TLS (rediss://)
+            if (redisUri.Scheme.Equals("rediss", StringComparison.OrdinalIgnoreCase))
+                redisConn += ",ssl=true,sslProtocols=tls12|tls13,abortConnect=false";
+            else
+                redisConn += ",abortConnect=false";
+
+            builder.Configuration["ConnectionStrings:Redis"] = redisConn;
+        }
+        catch (UriFormatException)
+        {
+            // If it's already in host:port format, use as-is
+            builder.Configuration["ConnectionStrings:Redis"] = redisUrl;
+        }
     }
 
     builder.Host.UseSerilog((context, services, configuration) => configuration

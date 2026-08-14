@@ -35,8 +35,10 @@ COPY --from=api-build /app/publish .
 COPY --from=frontend-build /app/dist ./wwwroot
 COPY docker/init-db.sql /app/init-db.sql
 
-# Port is configured at runtime via PORT env var (handled in Program.cs)
-# Render default port is 10000; fallback to 5000 for local Docker
+# The aspnet:8.0 base image sets ASPNETCORE_HTTP_PORTS=8080 by default.
+# Clear it so it doesn't conflict with the UseUrls() call in Program.cs
+# which reads the PORT env var (set by Render at runtime).
+ENV ASPNETCORE_HTTP_PORTS=
 ENV PORT=10000
 EXPOSE 10000
 

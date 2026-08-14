@@ -33,7 +33,9 @@ try
         var username = Uri.UnescapeDataString(userInfo[0]);
         var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
         var database = uri.AbsolutePath.TrimStart('/');
-        var npgsqlConn = $"Host={uri.Host};Port={uri.Port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        // uri.Port returns -1 for unknown schemes (postgres://) when no port specified — default to 5432
+        var dbPort = uri.Port > 0 ? uri.Port : 5432;
+        var npgsqlConn = $"Host={uri.Host};Port={dbPort};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
         builder.Configuration["ConnectionStrings:DefaultConnection"] = npgsqlConn;
     }
 

@@ -88,6 +88,16 @@ public sealed class GlobalExceptionHandlerMiddleware
 
         var correlationId = context.Items["CorrelationId"]?.ToString();
 
+        // In non-Production environments, expose the actual exception details
+        // so deployment issues can be diagnosed from the HTTP response.
+        var env = context.RequestServices.GetService<IWebHostEnvironment>();
+        if (statusCode == HttpStatusCode.InternalServerError
+            && env is not null
+            && !env.IsProduction())
+        {
+            detail = $"[{exception.GetType().Name}] {exception.Message}";
+        }
+
         var problemDetails = new ProblemDetails
         {
             Status = (int)statusCode,

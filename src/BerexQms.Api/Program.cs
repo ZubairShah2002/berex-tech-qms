@@ -247,6 +247,60 @@ try
         Predicate = _ => false
     });
 
+    // Diagnostic endpoint — check if database is initialized and seed data exists.
+    // Not a feature, just deployment debugging infrastructure.
+    app.MapGet("/health/db-status", async (IConfiguration config) =>
+    {
+        var connStr = config.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connStr))
+            return Results.Ok(new { status = "no_connection_string" });
+
+        try
+        {
+            await using var conn = new Npgsql.NpgsqlConnection(connStr);
+            await conn.OpenAsync();
+
+            var checks = new Dictionary<string, object?>();
+
+            // Check if audit_log table exists (DatabaseInitializer marker)
+            await using var cmd1 = conn.CreateCommand();
+            cmd1.CommandText = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'shared' AND table_name = 'audit_log')";
+            checks["audit_log_exists"] = await cmd1.ExecuteScalarAsync();
+
+            // Check if users table exists
+            await using var cmd2 = conn.CreateCommand();
+            cmd2.CommandText = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'identity' AND table_name = 'users')";
+            checks["users_table_exists"] = await cmd2.ExecuteScalarAsync();
+
+            // Count users (bypasses RLS for table owner)
+            await using var cmd3 = conn.CreateCommand();
+            cmd3.CommandText = "SELECT COUNT(*) FROM identity.users";
+            checks["user_count"] = await cmd3.ExecuteScalarAsync();
+
+            // Count roles
+            await using var cmd4 = conn.CreateCommand();
+            cmd4.CommandText = "SELECT COUNT(*) FROM identity.roles";
+            checks["role_count"] = await cmd4.ExecuteScalarAsync();
+
+            // Count tenants
+            await using var cmd5 = conn.CreateCommand();
+            cmd5.CommandText = "SELECT COUNT(*) FROM identity.tenants";
+            checks["tenant_count"] = await cmd5.ExecuteScalarAsync();
+
+            // Count schemas
+            await using var cmd6 = conn.CreateCommand();
+            cmd6.CommandText = "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'public', 'pg_toast')";
+            checks["schema_count"] = await cmd6.ExecuteScalarAsync();
+
+            checks["status"] = "connected";
+            return Results.Ok(checks);
+        }
+        catch (Exception ex)
+        {
+            return Results.Ok(new { status = "error", message = ex.Message });
+        }
+    }).AllowAnonymous();
+
     // SPA fallback — serve index.html for client-side routes
     if (Directory.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot")))
     {

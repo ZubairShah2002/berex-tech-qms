@@ -1,7 +1,7 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-6);
+  gap: var(--page-section-gap);
 }
 
 .header {
@@ -65,7 +65,7 @@
 }
 
 .errorBanner {
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-4) var(--spacing-5);
   background: var(--color-error-bg);
   color: var(--color-error);
   border: 1px solid var(--color-error-border);
@@ -76,8 +76,8 @@
 .infoGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-4);
-  padding: var(--spacing-4);
+  gap: var(--card-gap);
+  padding: var(--card-padding);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-bg-secondary);
@@ -106,8 +106,8 @@
 .capabilityGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-4);
-  padding: var(--spacing-4);
+  gap: var(--card-gap);
+  padding: var(--card-padding);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
@@ -146,14 +146,14 @@
 .chartSection {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-5);
+  padding: var(--card-padding);
 }
 
 .chartHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
 }
 
 .chartTitle {
@@ -206,20 +206,20 @@
 .addForm {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-5);
+  padding: var(--card-padding);
 }
 
 .addFormTitle {
   font-size: var(--font-size-md);
   font-weight: 600;
   color: var(--color-text-primary);
-  margin: 0 0 var(--spacing-4);
+  margin: 0 0 var(--spacing-5);
 }
 
 .addFormGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-4);
+  gap: var(--form-group-gap);
 }
 
 .addFormActions {
@@ -233,14 +233,14 @@
 .pointsSection {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-5);
+  padding: var(--card-padding);
 }
 
 .sectionHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-4);
+  margin-bottom: var(--spacing-5);
 }
 
 .sectionTitle {

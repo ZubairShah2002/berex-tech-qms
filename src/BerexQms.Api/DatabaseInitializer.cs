@@ -67,22 +67,11 @@ public static class DatabaseInitializer
             var openConn = conn!;
             await using var _ = openConn; // ensure disposal
 
-            // Check if the database has already been initialized
-            await using var checkCmd = openConn.CreateCommand();
-            checkCmd.CommandText = @"
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables
-                    WHERE table_schema = 'shared' AND table_name = 'audit_log'
-                );";
-            var exists = (bool)(await checkCmd.ExecuteScalarAsync() ?? false);
-
-            if (exists)
-            {
-                logger.LogInformation("Database already initialized — skipping init-db.sql");
-                return;
-            }
-
-            logger.LogInformation("Database not initialized — running init-db.sql...");
+            // Always run init-db.sql — it's fully idempotent:
+            // DDL uses IF NOT EXISTS, seed data uses ON CONFLICT DO UPDATE.
+            // This ensures seed data corrections (e.g. password hash fixes)
+            // are applied even on databases initialized by earlier deployments.
+            logger.LogInformation("Running init-db.sql (idempotent)...");
 
             // Look for init-db.sql in several locations
             var scriptPaths = new[]
@@ -119,15 +108,16 @@ public static class DatabaseInitializer
                     await cmd.ExecuteNonQueryAsync();
                     succeeded++;
                 }
-                catch (PostgresException ex)
+                catch (Exception ex)
                 {
                     failed++;
                     // Log the first 200 chars of the statement for diagnostics
                     var preview = statement.Length > 200
                         ? statement[..200] + "..."
                         : statement;
+                    var sqlState = ex is PostgresException pgEx ? pgEx.SqlState : "N/A";
                     logger.LogWarning("SQL statement failed ({SqlState}): {Message} — {Preview}",
-                        ex.SqlState, ex.MessageText, preview);
+                        sqlState, ex.Message, preview);
                 }
             }
 
@@ -184,8 +174,14 @@ public static class DatabaseInitializer
             {
                 // Inside dollar-quoted block — look for closing tag
                 if (trimmed.Contains(activeDollarTag, StringComparison.Ordinal))
+                {
                     activeDollarTag = null;
-                continue; // Don't check for semicolons inside dollar-quoted blocks
+                    // Fall through to semicolon check — the closing line may end with ';'
+                }
+                else
+                {
+                    continue; // Still inside dollar-quoted block — skip semicolon check
+                }
             }
 
             // Outside dollar-quoted blocks: check if line ends with semicolon

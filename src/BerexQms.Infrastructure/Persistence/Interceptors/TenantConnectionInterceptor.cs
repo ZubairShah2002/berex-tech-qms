@@ -25,12 +25,17 @@ public sealed class TenantConnectionInterceptor : DbConnectionInterceptor
     {
         var tenantId = _tenantContext.CurrentTenantId.Value;
 
+        await using var cmd = connection.CreateCommand();
         if (tenantId != Guid.Empty)
         {
-            await using var cmd = connection.CreateCommand();
             cmd.CommandText = $"SET LOCAL app.current_tenant_id = '{tenantId}'";
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
         }
+        else
+        {
+            // Clear any stale tenant from a previously pooled connection
+            cmd.CommandText = "RESET app.current_tenant_id";
+        }
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
     }
 
     public override void ConnectionOpened(
@@ -39,11 +44,16 @@ public sealed class TenantConnectionInterceptor : DbConnectionInterceptor
     {
         var tenantId = _tenantContext.CurrentTenantId.Value;
 
+        using var cmd = connection.CreateCommand();
         if (tenantId != Guid.Empty)
         {
-            using var cmd = connection.CreateCommand();
             cmd.CommandText = $"SET LOCAL app.current_tenant_id = '{tenantId}'";
-            cmd.ExecuteNonQuery();
         }
+        else
+        {
+            // Clear any stale tenant from a previously pooled connection
+            cmd.CommandText = "RESET app.current_tenant_id";
+        }
+        cmd.ExecuteNonQuery();
     }
 }

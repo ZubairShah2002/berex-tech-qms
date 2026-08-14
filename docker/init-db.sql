@@ -535,7 +535,9 @@ VALUES (
     'System Administrator',
     'system',
     NOW()
-) ON CONFLICT DO NOTHING;
+) ON CONFLICT (id) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    status = EXCLUDED.status;
 
 -- Assign System Administrator role to default admin user
 INSERT INTO identity.user_roles (user_id, role_id, assigned_at, assigned_by)

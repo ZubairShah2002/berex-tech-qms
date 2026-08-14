@@ -15,6 +15,16 @@ Log.Logger = new LoggerConfiguration()
 
 try
 {
+    // Container environments (Render, Railway) have low inotify instance limits.
+    // ASP.NET Core's default reloadOnChange:true on JSON config sources creates
+    // FileSystemWatcher instances that exhaust the limit, crashing the app at startup.
+    // This env var is read by ConfigureDefaults DURING CreateBuilder, so it must be
+    // set before that call. The aspnet:8.0 Docker image sets DOTNET_RUNNING_IN_CONTAINER=true.
+    if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+    {
+        Environment.SetEnvironmentVariable("DOTNET_hostBuilder__reloadConfigOnChange", "false");
+    }
+
     var builder = WebApplication.CreateBuilder(args);
 
     // PaaS platforms set PORT env var — configure Kestrel to listen on it

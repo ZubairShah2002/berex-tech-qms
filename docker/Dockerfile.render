@@ -39,6 +39,12 @@ COPY docker/init-db.sql /app/init-db.sql
 # Clear it so it doesn't conflict with the UseUrls() call in Program.cs
 # which reads the PORT env var (set by Render at runtime).
 ENV ASPNETCORE_HTTP_PORTS=
+
+# Disable config file watching (reloadOnChange) — container environments
+# have low inotify limits (Render: 128). Program.cs also sets this at
+# runtime, but the Dockerfile ENV is the canonical place for containers.
+ENV DOTNET_hostBuilder__reloadConfigOnChange=false
+
 ENV PORT=10000
 EXPOSE 10000
 

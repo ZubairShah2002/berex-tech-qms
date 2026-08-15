@@ -45,6 +45,10 @@ ENV ASPNETCORE_HTTP_PORTS=
 # runtime, but the Dockerfile ENV is the canonical place for containers.
 ENV DOTNET_hostBuilder__reloadConfigOnChange=false
 
+# Use Staging so error responses include exception details for debugging.
+# Switch to Production once the deployment is stable.
+ENV ASPNETCORE_ENVIRONMENT=Staging
+
 ENV PORT=10000
 EXPOSE 10000
 

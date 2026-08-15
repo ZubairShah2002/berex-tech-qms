@@ -504,20 +504,25 @@ VALUES (
 ) ON CONFLICT (code) DO NOTHING;
 
 -- Default system roles
+-- Role names MUST match the PascalCase identifiers used in controller [Authorize(Roles = "...")] attributes.
+-- ON CONFLICT ... DO UPDATE corrects existing databases that had the old spaced names.
 INSERT INTO identity.roles (id, tenant_id, name, description, is_system_role, created_by, created_at) VALUES
-    ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'System Administrator', 'Platform-wide administration: tenant management, system configuration, user management', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Quality Manager', 'Tenant-wide quality operations, approval authority, AI capability management, report access', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Quality Supervisor', 'Department/area: inspection approval, NC disposition, team workload management', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'Quality Engineer', 'Tenant-wide quality data: RCA/CAPA ownership, SPC management, AI interaction', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Quality Inspector', 'Assigned inspection types: inspection execution, defect reporting, measurement recording', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Administrator', 'Platform-wide administration: tenant management, system configuration, user management', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'QualityManager', 'Tenant-wide quality operations, approval authority, AI capability management, report access', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'QualitySupervisor', 'Department/area: inspection approval, NC disposition, team workload management', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000001', 'QualityEngineer', 'Tenant-wide quality data: RCA/CAPA ownership, SPC management, AI interaction', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', 'Inspector', 'Assigned inspection types: inspection execution, defect reporting, measurement recording', TRUE, 'system', NOW()),
     ('10000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000001', 'SQE', 'Supplier quality scope: supplier management, SCAR management, scorecard review', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', 'Internal Auditor', 'Audit scope: audit execution, finding recording, report generation', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001', 'Calibration Technician', 'Calibration scope: equipment management, calibration recording, certificate upload', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001', 'Training Manager', 'Training scope: course management, assignment, qualification management', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000001', 'Auditor', 'Audit scope: audit execution, finding recording, report generation', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000001', 'CalibrationTechnician', 'Calibration scope: equipment management, calibration recording, certificate upload', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000001', 'TrainingManager', 'Training scope: course management, assignment, qualification management', TRUE, 'system', NOW()),
     ('10000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001', 'Operator', 'Limited: defect reporting only, no approval authority', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', 'Supplier Portal User', 'Own supplier data only: view own scorecards, respond to own SCARs, upload certificates', TRUE, 'system', NOW()),
-    ('10000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', 'Read-Only Viewer', 'Configurable scope: dashboard and report viewing only, no data modification', TRUE, 'system', NOW())
-ON CONFLICT DO NOTHING;
+    ('10000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', 'Supplier', 'Own supplier data only: view own scorecards, respond to own SCARs, upload certificates', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', 'Viewer', 'Configurable scope: dashboard and report viewing only, no data modification', TRUE, 'system', NOW()),
+    ('10000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', 'SuperAdministrator', 'Elevated administration: full system access across all modules and tenants', TRUE, 'system', NOW())
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description;
 
 -- Default system admin user (password: Admin@123456)
 -- BCrypt hash for "Admin@123456" with work factor 12
@@ -535,16 +540,18 @@ VALUES (
     'System Administrator',
     'system',
     NOW()
-) ON CONFLICT DO NOTHING;
+) ON CONFLICT (id) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    status = EXCLUDED.status,
+    failed_login_attempts = 0,
+    lockout_end_utc = NULL;
 
--- Assign System Administrator role to default admin user
+-- Assign Administrator and SuperAdministrator roles to default admin user
 INSERT INTO identity.user_roles (user_id, role_id, assigned_at, assigned_by)
-VALUES (
-    '20000000-0000-0000-0000-000000000001',
-    '10000000-0000-0000-0000-000000000001',
-    NOW(),
-    'system'
-) ON CONFLICT DO NOTHING;
+VALUES
+    ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', NOW(), 'system'),
+    ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000013', NOW(), 'system')
+ON CONFLICT DO NOTHING;
 
 -- =============================================================================
 -- Non-Conformance (NCR) Module Tables

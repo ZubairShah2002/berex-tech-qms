@@ -1,7 +1,7 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-6);
+  gap: var(--page-section-gap);
 }
 
 .header {
@@ -59,10 +59,10 @@
 .infoGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-4);
+  gap: var(--card-gap);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-5);
+  padding: var(--card-padding);
 }
 
 .infoItem {
@@ -115,7 +115,7 @@
 .tabContent {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-4);
+  gap: var(--card-gap);
 }
 
 .sectionHeader {
@@ -158,7 +158,7 @@
 .inlineForm {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-4);
+  padding: var(--card-padding);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-4);
@@ -174,13 +174,13 @@
 .formGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-3);
+  gap: var(--form-group-gap);
 }
 
 .formGrid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-3);
+  gap: var(--form-group-gap);
 }
 
 .formActions {
@@ -197,7 +197,7 @@
 }
 
 .errorBanner {
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-4) var(--spacing-5);
   background: var(--color-error-bg);
   color: var(--color-error);
   border: 1px solid var(--color-error-border);
@@ -208,23 +208,23 @@
 .scheduleCard {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-5);
+  padding: var(--card-padding);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-4);
+  gap: var(--card-gap);
 }
 
 .card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-4);
+  padding: var(--card-padding);
 }
 
 .cardHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
 }
 
 .cardTitle {

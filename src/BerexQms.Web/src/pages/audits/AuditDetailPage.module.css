@@ -1,7 +1,7 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-5);
+  gap: var(--page-section-gap);
 }
 
 .backLink {
@@ -22,7 +22,7 @@
 }
 
 .errorBanner {
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-4) var(--spacing-5);
   background: var(--color-error-bg);
   color: var(--color-error);
   border: 1px solid var(--color-error-border);
@@ -57,16 +57,16 @@
 .subtitle {
   font-size: var(--font-size-md);
   color: var(--color-text-secondary);
-  margin: var(--spacing-1) 0 0;
+  margin: var(--spacing-2) 0 0;
 }
 
 .meta {
   display: flex;
   gap: var(--spacing-6);
-  padding: var(--spacing-4);
+  padding: var(--card-padding);
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   flex-wrap: wrap;
 }
 
@@ -91,17 +91,17 @@
 }
 
 .descriptionSection {
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-4) var(--spacing-5);
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .sectionTitle {
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--color-text-primary);
-  margin: 0 0 var(--spacing-2);
+  margin: 0 0 var(--spacing-3);
 }
 
 .descriptionText {
@@ -146,7 +146,7 @@
 .tabContent {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-4);
+  gap: var(--card-gap);
 }
 
 .tabHeader {
@@ -161,7 +161,7 @@
   padding: var(--spacing-2) var(--spacing-3);
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
@@ -272,22 +272,22 @@
   flex-direction: column;
   gap: var(--spacing-3);
   width: 100%;
-  padding: var(--spacing-4);
+  padding: var(--card-padding);
   background: var(--color-bg-subtle);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .actionFormGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-4);
+  gap: var(--form-group-gap);
 }
 
 .descriptionField {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-1);
+  gap: var(--spacing-2);
 }
 
 .fieldLabel {

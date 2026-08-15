@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, extractApiError } from '@/lib/api-client'
 import { DataTable } from '@/components/ui/DataTable'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -58,7 +58,7 @@ export function SupplierListPage() {
   const [page, setPage] = useState(1)
   const pageSize = 20
 
-  const { data, isLoading, isError } = useQuery<PagedResult>({
+  const { data, isLoading, isError, error } = useQuery<PagedResult>({
     queryKey: ['suppliers', search, status, riskLevel, page],
     queryFn: async () => {
       const params = new URLSearchParams()
@@ -71,6 +71,10 @@ export function SupplierListPage() {
       return res.data
     },
   })
+
+  const errorMessage = isError
+    ? extractApiError(error, 'Failed to load suppliers. Please try again.')
+    : null
 
   const handleSearch = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value)
@@ -188,7 +192,7 @@ export function SupplierListPage() {
 
       {isError && (
         <div className={styles.errorBanner}>
-          Failed to load suppliers. Please try again.
+          {errorMessage}
         </div>
       )}
 

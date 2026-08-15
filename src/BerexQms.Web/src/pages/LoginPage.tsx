@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/feedback/Alert'
 import { useAuthStore } from '@/stores/auth-store'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, extractApiError } from '@/lib/api-client'
 import styles from './LoginPage.module.css'
 
 interface LoginResponse {
@@ -57,10 +57,7 @@ export function LoginPage() {
 
       navigate('/', { replace: true })
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { error?: string } } }
-      setError(
-        axiosErr.response?.data?.error ?? 'Login failed. Please try again.',
-      )
+      setError(extractApiError(err, 'Login failed. Please try again.'))
     } finally {
       setLoading(false)
     }

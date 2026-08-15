@@ -26,11 +26,32 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      window.location.href = '/login'
+      // Don't redirect if we're already on the login page or making a login request —
+      // the login form handles its own 401 (invalid credentials) display.
+      const isLoginRequest = error.config?.url?.includes('/auth/login')
+      const isOnLoginPage = window.location.pathname === '/login'
+      if (!isLoginRequest && !isOnLoginPage) {
+        localStorage.removeItem('auth_token')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   },
 )
+
+/**
+ * Extract an error message from an API error response.
+ * Handles both { error: "..." } and ProblemDetails { detail: "..." } formats.
+ */
+export function extractApiError(err: unknown, fallback = 'An unexpected error occurred.'): string {
+  const axiosErr = err as { response?: { data?: Record<string, unknown> } }
+  const data = axiosErr?.response?.data
+  if (data) {
+    if (typeof data.error === 'string') return data.error
+    if (typeof data.detail === 'string') return data.detail
+    if (typeof data.title === 'string') return data.title
+  }
+  return fallback
+}
 
 export { apiClient }

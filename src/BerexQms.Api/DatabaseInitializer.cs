@@ -14,6 +14,9 @@ namespace BerexQms.Api;
 /// </summary>
 public static class DatabaseInitializer
 {
+    private const int MaxRetries = 5;
+    private static readonly int[] RetryDelaysMs = [2000, 4000, 8000, 15000, 30000];
+
     public static async Task InitializeAsync(WebApplication app)
     {
         var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -28,25 +31,47 @@ public static class DatabaseInitializer
 
         try
         {
-            await using var conn = new NpgsqlConnection(connectionString);
-            await conn.OpenAsync();
-
-            // Check if the database has already been initialized
-            await using var checkCmd = conn.CreateCommand();
-            checkCmd.CommandText = @"
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables
-                    WHERE table_schema = 'shared' AND table_name = 'audit_log'
-                );";
-            var exists = (bool)(await checkCmd.ExecuteScalarAsync() ?? false);
-
-            if (exists)
+            // On PaaS platforms (Render, Railway), the database may still be
+            // provisioning when the web service starts. Retry with backoff.
+            NpgsqlConnection? conn = null;
+            for (var attempt = 0; attempt <= MaxRetries; attempt++)
             {
-                logger.LogInformation("Database already initialized — skipping init-db.sql");
-                return;
+                try
+                {
+                    conn = new NpgsqlConnection(connectionString);
+                    await conn.OpenAsync();
+                    logger.LogInformation("Database connection established on attempt {Attempt}", attempt + 1);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    if (conn is not null) await conn.DisposeAsync();
+                    conn = null;
+
+                    if (attempt >= MaxRetries)
+                    {
+                        logger.LogError(ex, "Could not connect to database after {Max} attempts — skipping initialization",
+                            MaxRetries + 1);
+                        return;
+                    }
+
+                    var delay = RetryDelaysMs[attempt];
+                    logger.LogWarning(
+                        "Database connection attempt {Attempt}/{Max} failed: {Message}. Retrying in {Delay}ms...",
+                        attempt + 1, MaxRetries + 1, ex.Message, delay);
+                    await Task.Delay(delay);
+                }
             }
 
-            logger.LogInformation("Database not initialized — running init-db.sql...");
+            // At this point conn is guaranteed non-null (loop returned early on failure).
+            var openConn = conn!;
+            await using var _ = openConn; // ensure disposal
+
+            // Always run init-db.sql — it's fully idempotent:
+            // DDL uses IF NOT EXISTS, seed data uses ON CONFLICT DO UPDATE.
+            // This ensures seed data corrections (e.g. password hash fixes)
+            // are applied even on databases initialized by earlier deployments.
+            logger.LogInformation("Running init-db.sql (idempotent)...");
 
             // Look for init-db.sql in several locations
             var scriptPaths = new[]
@@ -77,21 +102,22 @@ public static class DatabaseInitializer
             {
                 try
                 {
-                    await using var cmd = conn.CreateCommand();
+                    await using var cmd = openConn.CreateCommand();
                     cmd.CommandText = statement;
                     cmd.CommandTimeout = 60;
                     await cmd.ExecuteNonQueryAsync();
                     succeeded++;
                 }
-                catch (PostgresException ex)
+                catch (Exception ex)
                 {
                     failed++;
                     // Log the first 200 chars of the statement for diagnostics
                     var preview = statement.Length > 200
                         ? statement[..200] + "..."
                         : statement;
+                    var sqlState = ex is PostgresException pgEx ? pgEx.SqlState : "N/A";
                     logger.LogWarning("SQL statement failed ({SqlState}): {Message} — {Preview}",
-                        ex.SqlState, ex.MessageText, preview);
+                        sqlState, ex.Message, preview);
                 }
             }
 
@@ -148,8 +174,14 @@ public static class DatabaseInitializer
             {
                 // Inside dollar-quoted block — look for closing tag
                 if (trimmed.Contains(activeDollarTag, StringComparison.Ordinal))
+                {
                     activeDollarTag = null;
-                continue; // Don't check for semicolons inside dollar-quoted blocks
+                    // Fall through to semicolon check — the closing line may end with ';'
+                }
+                else
+                {
+                    continue; // Still inside dollar-quoted block — skip semicolon check
+                }
             }
 
             // Outside dollar-quoted blocks: check if line ends with semicolon

@@ -542,7 +542,9 @@ VALUES (
     NOW()
 ) ON CONFLICT (id) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
-    status = EXCLUDED.status;
+    status = EXCLUDED.status,
+    failed_login_attempts = 0,
+    lockout_end_utc = NULL;
 
 -- Assign Administrator and SuperAdministrator roles to default admin user
 INSERT INTO identity.user_roles (user_id, role_id, assigned_at, assigned_by)

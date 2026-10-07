@@ -72,3 +72,6 @@ TestResults/
 *.tmp
 *.bak
 *.cache
+
+# TypeScript build cache
+*.tsbuildinfo

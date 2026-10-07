@@ -1,0 +1,192 @@
+# Product Specification Lookup
+
+A fast internal tool for QC staff to look up product specifications.
+The workflow is **Open → Search → Check → Done**.
+
+- **No login to search or view.** The first screen is the search box.
+- **Login (user ID + password) is required to change anything**: add or edit products, edit specifications, upload images or drawings, import Excel/CSV, archive or restore products, and manage users. This is enforced by the server, not just by hiding buttons.
+- Works on PC, laptop and phone, and can be installed to the phone home screen (PWA).
+
+This is a standalone application that lives in the Berex Tech QMS repository. It does not need the QMS to run. See [Future integration with Berex Tech QMS](#future-integration-with-berex-tech-qms).
+
+---
+
+## Features
+
+| Area | What it does |
+|---|---|
+| Search | Exact product code is ranked first. Also matches name, description, size, variant, model, material, group, supplier, notes and specification values. Ignores case, extra spaces and punctuation (`2mlt 3101a` finds `2MLT3101A`; `1880 x 1810` finds `1,810mm x 1,880mm`). Falls back to similar matches for typos. |
+| Voice search | Microphone button next to the search box. Spoken text is turned into a normal search, and command words such as "show me" are removed. If the browser has no speech recognition, it shows *Voice search is not supported on this browser.* |
+| Product page | Product information, specification (name / value / unit / tolerance), inspection requirements, packaging requirements, supplier information, images and drawings, notes, and revision history. Missing values show **Not specified**. On phones, tables become stacked cards. A print layout is included. |
+| Editing | One form for all fields. Specification, inspection, packaging and supplier rows can be added, edited, deleted and reordered. |
+| Revision control | Every saved change creates a new revision (Rev. 01, Rev. 02, …) that records who, when, a summary, and each changed field with its previous and new value. If two people edit at once, the second save is refused instead of silently overwriting. Admins can restore an earlier revision; this is saved as a new revision. |
+| Duplicate codes | Product codes are unique, ignoring case. A duplicate is never overwritten: *Product code already exists.* with **View Product / Edit Existing Product / Cancel**. |
+| Images and drawings | JPEG, PNG, WebP, GIF and PDF, up to 10 MB each. The file type is checked from the file content, not the file name. Files are stored in the database, so nothing is lost on redeploy. |
+| Excel / CSV import | Upload, review a preview (total rows, new products, existing codes, missing codes, invalid rows, merged rows, column mapping), then choose **Skip** or **Update existing** for existing codes, or **Cancel**. Nothing is written before you confirm. |
+| Archive | Products are archived, not deleted. Archived products leave normal search, and logged-in users can view and restore them. |
+| Audit log | Every change is logged, for example `QC01 updated 2MLT3101A: Width from 1800 mm to 1810 mm. New revision Rev. 03.` |
+| Users | Roles: **Admin** and **QC User**. Import permission is a per-user option for QC users. Admins manage users and settings, including whether the public can see revision history. |
+| Recent searches | Kept on each device (browser storage). This is only a convenience; all product data is in PostgreSQL. |
+
+## Data rules
+
+- Values are stored **exactly as entered or imported**. The only change is trimming spaces at the start and end. Codes, units, decimals, tolerances, supplier names and terminology are never changed.
+- Nothing is invented. Empty values display as **Not specified**.
+- Search uses a separate hidden index that is normalized (case, digit commas, punctuation). The displayed data is not touched.
+
+### Importing the "Incoming Inspection 2026" material list
+
+The importer reads that workbook's **Material List** sheet directly. The **Forecast** and **AQL** sheets are not imported.
+
+| Excel column | Stored as |
+|---|---|
+| Item Code | Product Code |
+| Material Name | Product Name |
+| Description | Description |
+| Group | Group |
+| Applicated | Model / Application |
+| Unit | Unit |
+| Supplier1 / Supplier2 / Supplie3 | Suppliers (each distinct name kept, exact spelling) |
+| No. | not imported |
+
+Result for the current file: **211 rows → 169 products.**
+
+- **34 rows repeat a product code that appears earlier.** They are combined into one product, and every supplier is kept (for example, `2MLT3101A` has suppliers *Maus* and *LSK*). Where a repeated row has a different value (another Applicated, Unit, name or description), that row is copied word-for-word into the product's **Notes** as `Source row N — …`, so no information is lost. Some repeated codes have conflicting descriptions in the source file (for example, `2MTH0010B` appears as both *Thread Penguin (White)* and *40/2 Cotton Thread (White)*). Please check these and correct them in the app.
+- **8 rows are not imported because they contain only a code:**
+  - Six codes have no product name anywhere in the file: `3GCM0001A`, `2MLB0201A/B`, `2MLB0202A/B` (two rows), `2VBF0008B`, `2VBF0008A`.
+  - Two rows repeat a code that has full data on another row (`2MTH0007A`, `2MTH0009A`) and add nothing.
+
+  Add the missing ones with **+ Add Product**, or fill in the names in Excel and import again.
+- Columns with any other heading are imported as specification fields, using the heading as the specification name.
+
+## Using it
+
+1. Open the site and type a code, name or keyword, or tap the microphone. Press Enter on an exact code to go straight to the product.
+2. To change something, click **Edit Product** or **+ Add Product** and log in.
+3. Save. A new revision is created and the change is searchable straight away.
+
+Install on a phone: in Chrome (Android) use *menu → Add to Home screen / Install app*; in Safari (iPhone) use *Share → Add to Home Screen*.
+
+---
+
+## Technology
+
+| Part | Choice |
+|---|---|
+| Server | Node.js 22, Fastify 5, TypeScript |
+| Database | PostgreSQL 13+ (16 recommended), `pg_trgm` for fast keyword search |
+| Web app | React 18, TypeScript, Vite, TanStack Query, plain CSS |
+| Auth | User ID + password (scrypt hashing), server-side sessions in an HttpOnly cookie, role checks on every write endpoint |
+
+One container serves both the API and the web app, so there is one URL to deploy.
+
+```
+spec-lookup/
+  server/           API (src/routes, src/products.ts, src/search.ts, src/importer.ts, src/migrations.ts)
+  server/test/      API integration tests (needs PostgreSQL)
+  web/              React PWA (src/pages, src/components, public/sw.js, public/manifest.webmanifest)
+  Dockerfile        Production image (API + web)
+  docker-compose.yml  Local / on-premise run with PostgreSQL
+  render.yaml       Render.com blueprint
+  .env.example      All environment variables
+```
+
+## Environment variables
+
+See [`.env.example`](.env.example). The main ones are:
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (required). |
+| `DB_SCHEMA` | Schema for all tables (default `spec_lookup`). Lets the app share a database with the QMS. |
+| `DATABASE_SSL` | `false`, `true` (verified TLS) or `no-verify`. |
+| `ADMIN_USER_ID` / `ADMIN_PASSWORD` | First administrator, created only when there are no users. If the password is empty, a one-time password is printed in the server log. |
+| `COOKIE_SECURE` | Defaults to `true` in production (HTTPS). Set `false` only for plain-http use on a local network. |
+| `SESSION_TTL_HOURS`, `MAX_FILE_MB`, `MAX_IMPORT_MB` | Session length and upload limits. |
+
+Tables are created automatically on startup (migrations run in order and are safe to re-run).
+
+## Local development
+
+Requirements: Node.js 22 and a PostgreSQL database.
+
+```bash
+# 1. API (http://localhost:8080)
+cd spec-lookup/server
+npm ci
+DATABASE_URL=postgres://user:pass@localhost:5432/spec_lookup ADMIN_PASSWORD='choose-a-password' npm run dev
+
+# 2. Web app with hot reload (http://localhost:5174, proxies /api to :8080)
+cd spec-lookup/web
+npm ci
+npm run dev
+```
+
+Tests and checks:
+
+```bash
+cd spec-lookup/server
+npm run typecheck
+TEST_DATABASE_URL=postgres://user:pass@localhost:5432/spec_test npm test   # uses a temporary schema, then drops it
+
+cd ../web
+npm run build        # type check + production build
+```
+
+Create or reset a user from the command line (for example, if the admin password is lost):
+
+```bash
+cd spec-lookup/server && npm run build
+NEW_PASSWORD='new-password' DATABASE_URL=... npm run create-user -- admin admin
+NEW_PASSWORD='qc-password'  DATABASE_URL=... npm run create-user -- QC01 qc --import
+```
+
+## Deployment
+
+### Option A — Render.com (online URL, HTTPS included)
+
+1. In Render, choose **New → Blueprint**, select this repository, and set **Blueprint file path** to `spec-lookup/render.yaml`.
+2. Render creates a PostgreSQL database and the web service, and generates `ADMIN_PASSWORD`.
+3. When the deploy is live, open the service's URL (for example `https://spec-lookup.onrender.com`). Log in as `admin` with the `ADMIN_PASSWORD` shown on the service's **Environment** tab, then change the password under your user name.
+4. Go to **Import**, upload `1. Incoming Inspection 2026.xlsx`, check the preview, and confirm.
+5. Under **Admin → Users**, create a login for each QC user.
+
+The blueprint uses paid plans (`starter` web service and `basic-256mb` database). Render's free PostgreSQL databases expire after 30 days, which would delete the product data. If you only want to try the app, you can switch both plans to `free`, but move to a paid database before real use. Free web services also sleep when idle, so the first visit after a break takes a while.
+
+### Option B — Your own server or office PC (Docker)
+
+```bash
+cd spec-lookup
+POSTGRES_PASSWORD='strong-db-password' ADMIN_PASSWORD='strong-admin-password' docker compose up -d --build
+```
+
+Open `http://<server-ip>:8080` from any PC or phone on the network. The database is kept in the `spec-db` Docker volume; back it up with `docker compose exec db pg_dump -U spec spec_lookup > backup.sql`.
+
+For access from outside the office, put the app behind HTTPS (for example Caddy, nginx or Cloudflare Tunnel) and remove `COOKIE_SECURE=false`. Phone home-screen install (PWA) and voice search require HTTPS, except on `localhost`.
+
+### Option C — Any Docker host or Node.js host
+
+Build the image with `docker build -t spec-lookup spec-lookup/`. Run it with `DATABASE_URL` (and `ADMIN_PASSWORD` for the first start) and expose port 8080. Health check: `GET /health`.
+
+Without Docker: run `npm ci && npm run build` in `web/` and in `server/`, then run `node server/dist/index.js` from `spec-lookup/`.
+
+## Security summary
+
+- Public endpoints are read-only: search, product view, files, and revision history (the history can be turned off for the public in Settings).
+- Every write endpoint checks the session and role on the server. Writes from other websites are rejected (Origin check plus SameSite cookies).
+- Passwords are hashed with scrypt and a per-user salt. After 5 failed logins in 15 minutes, login is locked for 15 minutes per IP and user ID. Disabling a user or resetting a password ends that user's sessions.
+- All SQL is parameterized. Input is validated on the server (lengths, required fields). React escapes all output, and a strict Content-Security-Policy is sent.
+- Uploads are checked by their content (magic bytes), limited in size, and SVG and HTML are never accepted. Files are served with `nosniff`, and images with a sandboxing CSP.
+
+## API (for integration)
+
+Public (no login): `GET /api/search?q=`, `GET /api/products`, `GET /api/products/:id`, `GET /api/products/by-code/:code`, `GET /api/products/:id/revisions`, `GET /api/files/:id`.
+
+Login required: `POST /api/products`, `PUT /api/products/:id` (with `expectedRevision`), `POST /api/products/:id/archive` and `/restore`, `POST /api/products/:id/files`, `DELETE /api/products/:id/files/:fileId`, `POST /api/import/preview`, `POST /api/import/:batchId/commit`. Admin only: `/api/users`, `/api/settings`, `POST /api/products/:id/revisions/:revisionId/restore`.
+
+## Future integration with Berex Tech QMS
+
+- All tables live in their own PostgreSQL schema (`DB_SCHEMA`), so the app can share the QMS database without name clashes.
+- Products have stable UUIDs and unique product codes, and `GET /api/products/by-code/:code` gives a direct lookup. QMS modules (incoming / WIP / outgoing inspection, NCR, CAPA, supplier quality) can reference products by ID or code.
+- Suppliers are a separate table linked to products, ready to map to QMS supplier management.
+- Inspection requirements per product are stored as structured check points (specification, tolerance, method) that a future inspection module can use as its checklist.

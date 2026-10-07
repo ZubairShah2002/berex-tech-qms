@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { promisify } from 'node:util';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Queryable } from './db.js';
@@ -155,6 +157,12 @@ export async function ensureInitialAdmin(db: Queryable, log: { warn: (m: string)
   if (!password) {
     password = crypto.randomBytes(12).toString('base64url');
     log.warn(`No ADMIN_PASSWORD set. Created administrator "${config.adminUserId}" with one-time password: ${password} — change it after logging in.`);
+    if (!config.databaseUrl) {
+      // Built-in mode runs in a console window that may be closed; keep the password in a file too.
+      const file = path.join(config.dataDir, 'FIRST-LOGIN.txt');
+      fs.writeFileSync(file, `User ID: ${config.adminUserId}\r\nPassword: ${password}\r\n\r\nLog in, change this password (click your user ID, top right), then delete this file.\r\n`);
+      log.warn(`The first login details were also saved to ${file}`);
+    }
   } else {
     const problem = passwordProblem(password);
     if (problem) throw new Error(`ADMIN_PASSWORD: ${problem}`);

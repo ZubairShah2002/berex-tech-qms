@@ -75,3 +75,6 @@ TestResults/
 
 # TypeScript build cache
 *.tsbuildinfo
+
+# Spec Lookup built-in database
+spec-lookup/data/

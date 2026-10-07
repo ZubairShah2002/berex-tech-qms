@@ -2,8 +2,9 @@
  * Creates a user or resets an existing user's password from the command line.
  * Usage: npm run create-user -- <userId> <admin|qc> [--import]
  * The password is read from the NEW_PASSWORD environment variable.
+ * With the built-in database, stop the app before running this.
  */
-import { createPool, migrate } from '../db.js';
+import { openDatabase, migrate } from '../db.js';
 import { hashPassword, passwordProblem } from '../auth.js';
 
 const [userId, role] = process.argv.slice(2);
@@ -16,7 +17,8 @@ if (!userId || (role !== 'admin' && role !== 'qc')) {
 const problem = passwordProblem(password);
 if (problem) { console.error(`NEW_PASSWORD: ${problem}`); process.exit(1); }
 
-const pool = createPool();
+// With the built-in database, stop the app first: only one program may open the data folder.
+const pool = await openDatabase();
 await migrate(pool);
 const hash = await hashPassword(password);
 const { rows } = await pool.query(

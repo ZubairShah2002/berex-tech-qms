@@ -7,14 +7,18 @@ import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
+import os from 'node:os';
+import path from 'node:path';
 import { createPool, migrate } from '../src/db.js';
+import { createEmbeddedPool } from '../src/embedded.js';
 import { buildApp } from '../src/app.js';
 import { hashPassword } from '../src/auth.js';
 import { normalizeForSearch, codeKey } from '../src/text.js';
 
 const url = process.env.TEST_DATABASE_URL;
-if (!url) {
-  console.error('Set TEST_DATABASE_URL to run the API tests.');
+const embedded = process.env.TEST_EMBEDDED === '1';
+if (!url && !embedded) {
+  console.error('Set TEST_DATABASE_URL (PostgreSQL server) or TEST_EMBEDDED=1 (built-in database) to run the API tests.');
   process.exit(1);
 }
 const schema = `t_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6)}`;
@@ -68,7 +72,9 @@ const baseProduct = (code: string, extra: Record<string, unknown> = {}) => ({
 });
 
 before(async () => {
-  pool = createPool(url, schema);
+  pool = embedded
+    ? await createEmbeddedPool(path.join(os.tmpdir(), `spec-test-${schema}`), schema)
+    : createPool(url!, schema);
   await migrate(pool, schema);
   await pool.query(`INSERT INTO users (user_id, display_name, password_hash, role, can_import) VALUES
     ('admin', 'Admin', $1, 'admin', true), ('QC01', 'QC One', $1, 'qc', false), ('QC02', 'QC Two', $1, 'qc', true)`,

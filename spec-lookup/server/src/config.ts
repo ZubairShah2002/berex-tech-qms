@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 /**
  * Runtime configuration, read once from environment variables.
  * See spec-lookup/.env.example for documentation of each variable.
@@ -32,18 +34,22 @@ export const config = {
   isProduction,
   host: str('HOST', '0.0.0.0'),
   port: int('PORT', 8080),
-  databaseUrl: str('DATABASE_URL', 'postgres://postgres:postgres@localhost:5432/spec_lookup'),
+  /** PostgreSQL server. When empty, the built-in database (DATA_DIR) is used. */
+  databaseUrl: process.env.DATABASE_URL?.trim() || '',
+  /** Folder for the built-in database, used when DATABASE_URL is not set. */
+  dataDir: str('DATA_DIR', fileURLToPath(new URL('../../data', import.meta.url))),
   /** Postgres schema holding all tables. Lets the app share a database with Berex Tech QMS. */
   dbSchema: str('DB_SCHEMA', 'spec_lookup'),
   /** "false" (default), "true" (verify certificate) or "no-verify" (encrypt, skip verification). */
   dbSsl: str('DATABASE_SSL', 'false').toLowerCase(),
   sessionTtlHours: int('SESSION_TTL_HOURS', 12),
-  cookieSecure: bool('COOKIE_SECURE', isProduction),
+  // Secure cookies need HTTPS; the built-in database mode is for plain-http office networks.
+  cookieSecure: bool('COOKIE_SECURE', isProduction && !!process.env.DATABASE_URL?.trim()),
   adminUserId: str('ADMIN_USER_ID', 'admin'),
   adminPassword: process.env.ADMIN_PASSWORD?.trim() || '',
   maxFileMb: int('MAX_FILE_MB', 10),
   maxImportMb: int('MAX_IMPORT_MB', 10),
-  webDist: str('WEB_DIST', new URL('../../web/dist', import.meta.url).pathname),
+  webDist: str('WEB_DIST', fileURLToPath(new URL('../../web/dist', import.meta.url))),
   logLevel: str('LOG_LEVEL', isProduction ? 'info' : 'debug'),
 };
 

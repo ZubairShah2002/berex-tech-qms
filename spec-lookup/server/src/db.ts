@@ -7,6 +7,13 @@ export type Tx = pg.PoolClient;
 /** Anything that can run a query: the pool or a transaction client. */
 export type Queryable = Pick<pg.Pool, 'query'>;
 
+/** Opens the configured database: a PostgreSQL server, or the built-in one in DATA_DIR. */
+export async function openDatabase(): Promise<pg.Pool> {
+  if (config.databaseUrl) return createPool(config.databaseUrl, config.dbSchema);
+  const { createEmbeddedPool } = await import('./embedded.js');
+  return createEmbeddedPool(config.dataDir, config.dbSchema);
+}
+
 export function createPool(databaseUrl = config.databaseUrl, schema = config.dbSchema): pg.Pool {
   const ssl =
     config.dbSsl === 'true' ? { rejectUnauthorized: true }

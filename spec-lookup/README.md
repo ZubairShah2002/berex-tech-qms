@@ -74,7 +74,7 @@ Install on a phone: in Chrome (Android) use *menu → Add to Home screen / Insta
 | Part | Choice |
 |---|---|
 | Server | Node.js 22, Fastify 5, TypeScript |
-| Database | PostgreSQL 13+ (16 recommended), `pg_trgm` for fast keyword search |
+| Database | PostgreSQL 13+ (16 recommended) with `pg_trgm` for fast keyword search, or the built-in PGlite database (PostgreSQL in WebAssembly) for single-PC installs |
 | Web app | React 18, TypeScript, Vite, TanStack Query, plain CSS |
 | Auth | User ID + password (scrypt hashing), server-side sessions in an HttpOnly cookie, role checks on every write endpoint |
 
@@ -97,7 +97,7 @@ See [`.env.example`](.env.example). The main ones are:
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string (required). For Neon, use the direct (non-pooled) connection string. |
+| `DATABASE_URL` | PostgreSQL connection string. If not set, the built-in database in `DATA_DIR` (default `spec-lookup/data`) is used. For Neon, use the direct (non-pooled) connection string. |
 | `DB_SCHEMA` | Schema for all tables (default `spec_lookup`). Lets the app share a database with the QMS. |
 | `DATABASE_SSL` | `false`, `true` (verified TLS) or `no-verify`. |
 | `ADMIN_USER_ID` / `ADMIN_PASSWORD` | First administrator, created only when there are no users. If the password is empty, a one-time password is printed in the server log. |
@@ -128,6 +128,7 @@ Tests and checks:
 cd spec-lookup/server
 npm run typecheck
 TEST_DATABASE_URL=postgres://user:pass@localhost:5432/spec_test npm test   # uses a temporary schema, then drops it
+TEST_EMBEDDED=1 npm test                                                   # same tests on the built-in database
 
 cd ../web
 npm run build        # type check + production build
@@ -177,7 +178,25 @@ This gives a public `https://…onrender.com` address that works on office PCs, 
 
 You can move to paid plans or your own server later without changing the app; only `DATABASE_URL` changes.
 
-### Option B — Your own server or office PC (Docker)
+### Option B — One office PC, no database to install (simplest)
+
+The app has a built-in database. When `DATABASE_URL` is not set, it keeps all data in the `spec-lookup/data` folder, so there is nothing else to install.
+
+1. On the PC that will host the app, install **Node.js LTS** from <https://nodejs.org> (a normal installer: click Next until it finishes).
+2. Download this repository (on GitHub: **Code → Download ZIP**) and unzip it, for example to `C:\SpecLookup`.
+3. Double-click `spec-lookup\start-windows.bat`. The first start installs and builds the app, which takes a few minutes and needs internet. If Windows Firewall asks, allow access on **Private networks**.
+4. The window shows the addresses, for example `From other PCs/phones: http://192.168.1.20:8080`. Open that address on other PCs and phones connected to the same office network.
+5. The first login (user `admin` and a generated password) is in `spec-lookup\data\FIRST-LOGIN.txt`. Log in, change the password, then delete that file.
+
+Notes:
+
+- Keep the window open, and the PC switched on, while people use the app. To start it automatically, put a shortcut to `start-windows.bat` in the Startup folder (press Win+R and type `shell:startup`).
+- **Backup:** close the window, then copy the `spec-lookup\data` folder somewhere safe.
+- Only one copy of the app may use the `data` folder at a time.
+- Over plain `http://`, browsers do not allow the microphone, so voice search does not work on phones. Typed search works normally. Voice search works on the host PC itself at `http://localhost:8080`, and anywhere once the app is served over HTTPS (Option A).
+- To use a PostgreSQL server instead, set `DATABASE_URL`.
+
+### Option C — Your own server or office PC (Docker)
 
 ```bash
 cd spec-lookup
@@ -188,7 +207,7 @@ Open `http://<server-ip>:8080` from any PC or phone on the network. The database
 
 For access from outside the office, put the app behind HTTPS (for example Caddy, nginx or Cloudflare Tunnel) and remove `COOKIE_SECURE=false`. Phone home-screen install (PWA) and voice search require HTTPS, except on `localhost`.
 
-### Option C — Any Docker host or Node.js host
+### Option D — Any Docker host or Node.js host
 
 Build the image with `docker build -t spec-lookup spec-lookup/`. Run it with `DATABASE_URL` (and `ADMIN_PASSWORD` for the first start) and expose port 8080. Health check: `GET /health`.
 

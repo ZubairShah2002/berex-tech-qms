@@ -15,6 +15,7 @@
     "create-user": "node dist/cli/create-user.js"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@fastify/cookie": "^11.1.2",
     "@fastify/helmet": "^13.1.1",
     "@fastify/multipart": "^9.4.0",

@@ -21,7 +21,7 @@ This is a standalone application that lives in the Berex Tech QMS repository. It
 | Editing | One form for all fields. Specification, inspection, packaging and supplier rows can be added, edited, deleted and reordered. |
 | Revision control | Every saved change creates a new revision (Rev. 01, Rev. 02, …) that records who, when, a summary, and each changed field with its previous and new value. If two people edit at once, the second save is refused instead of silently overwriting. Admins can restore an earlier revision; this is saved as a new revision. |
 | Duplicate codes | Product codes are unique, ignoring case. A duplicate is never overwritten: *Product code already exists.* with **View Product / Edit Existing Product / Cancel**. |
-| Images and drawings | JPEG, PNG, WebP, GIF and PDF, up to 10 MB each. The file type is checked from the file content, not the file name. Files are stored in the database, so nothing is lost on redeploy. |
+| Images and drawings | JPEG, PNG, WebP, GIF and PDF, up to 10 MB each (5 MB on the free setup). Large product photos are shrunk in the browser before upload (longest side 2000 px); drawings are uploaded unchanged. The file type is checked from the file content, not the file name. Files are stored in the database, so nothing is lost on redeploy. |
 | Excel / CSV import | Upload, review a preview (total rows, new products, existing codes, missing codes, invalid rows, merged rows, column mapping), then choose **Skip** or **Update existing** for existing codes, or **Cancel**. Nothing is written before you confirm. |
 | Archive | Products are archived, not deleted. Archived products leave normal search, and logged-in users can view and restore them. |
 | Audit log | Every change is logged, for example `QC01 updated 2MLT3101A: Width from 1800 mm to 1810 mm. New revision Rev. 03.` |
@@ -87,7 +87,7 @@ spec-lookup/
   web/              React PWA (src/pages, src/components, public/sw.js, public/manifest.webmanifest)
   Dockerfile        Production image (API + web)
   docker-compose.yml  Local / on-premise run with PostgreSQL
-  render.yaml       Render.com blueprint
+  render.yaml       Render.com blueprint (free plan, uses a Neon database)
   .env.example      All environment variables
 ```
 
@@ -97,7 +97,7 @@ See [`.env.example`](.env.example). The main ones are:
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string (required). |
+| `DATABASE_URL` | PostgreSQL connection string (required). For Neon, use the direct (non-pooled) connection string. |
 | `DB_SCHEMA` | Schema for all tables (default `spec_lookup`). Lets the app share a database with the QMS. |
 | `DATABASE_SSL` | `false`, `true` (verified TLS) or `no-verify`. |
 | `ADMIN_USER_ID` / `ADMIN_PASSWORD` | First administrator, created only when there are no users. If the password is empty, a one-time password is printed in the server log. |
@@ -143,15 +143,39 @@ NEW_PASSWORD='qc-password'  DATABASE_URL=... npm run create-user -- QC01 qc --im
 
 ## Deployment
 
-### Option A — Render.com (online URL, HTTPS included)
+### Option A — Free online website (Render + Neon, no cost)
 
-1. In Render, choose **New → Blueprint**, select this repository, and set **Blueprint file path** to `spec-lookup/render.yaml`.
-2. Render creates a PostgreSQL database and the web service, and generates `ADMIN_PASSWORD`.
-3. When the deploy is live, open the service's URL (for example `https://spec-lookup.onrender.com`). Log in as `admin` with the `ADMIN_PASSWORD` shown on the service's **Environment** tab, then change the password under your user name.
-4. Go to **Import**, upload `1. Incoming Inspection 2026.xlsx`, check the preview, and confirm.
-5. Under **Admin → Users**, create a login for each QC user.
+This gives a public `https://…onrender.com` address that works on office PCs, laptops and phones, with no credit card needed. It uses two free services:
 
-The blueprint uses paid plans (`starter` web service and `basic-256mb` database). Render's free PostgreSQL databases expire after 30 days, which would delete the product data. If you only want to try the app, you can switch both plans to `free`, but move to a paid database before real use. Free web services also sleep when idle, so the first visit after a break takes a while.
+- **Neon** (neon.tech) — free PostgreSQL database. It does not expire and has 0.5 GB of storage.
+- **Render** (render.com) — free web hosting for the app.
+
+**Step 1 — Create the free database (Neon)**
+1. Sign up at <https://neon.tech> (you can use your GitHub account) and create a project, for example `spec-lookup`. Choose the region closest to you, such as *AWS Asia Pacific (Singapore)*.
+2. On the project dashboard, click **Connect**. Turn **Connection pooling off**, so the host name does *not* contain `-pooler`.
+3. Copy the connection string. It looks like `postgresql://neondb_owner:xxxx@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`.
+
+**Step 2 — Create the free website (Render)**
+1. Sign up at <https://render.com> with your GitHub account and allow it to access the `berex-tech-qms` repository.
+2. Click **New → Blueprint**, select the repository, set **Blueprint file path** to `spec-lookup/render.yaml`, and pick the branch that contains `spec-lookup/` (`main` once it is merged).
+3. When Render asks for `DATABASE_URL`, paste the Neon connection string from Step 1. Click **Apply**.
+4. Wait for the first build to finish (about 5–10 minutes). The address appears at the top of the service page, for example `https://spec-lookup.onrender.com`.
+
+**Step 3 — First login and data**
+1. On the Render service, open **Environment** and copy the value of `ADMIN_PASSWORD`.
+2. Open the website, click **Log in**, and use user ID `admin` with that password. Then click your user name (top right) and change the password.
+3. Go to **Import**, upload `1. Incoming Inspection 2026.xlsx`, check the preview, and click **Confirm Import**.
+4. Under **Admin → Users**, create a login for each QC user.
+
+**What "free" means here**
+
+| Limit | Effect | What to do |
+|---|---|---|
+| Render free websites sleep after 15 minutes without visitors | The first visit after a quiet period takes about 30–60 seconds; after that it is fast. | Optional: a free monitor such as UptimeRobot can open `https://<your-site>/health` every 10 minutes during working hours to keep it awake. Render's free plan includes 750 hours a month, enough for one site running all month. |
+| Neon free storage is 0.5 GB | Product data is small (thousands of products fit easily). Images and drawings use most of the space. | Product photos are shrunk automatically before upload (longest side 2000 px). Drawings are kept as uploaded, up to 5 MB each. Check usage on the Neon dashboard. |
+| Free plans have no paid support or uptime guarantee | Fine for an internal lookup tool. | Back up the data now and then: in Neon, use **Branches** or run `pg_dump` with the connection string. |
+
+You can move to paid plans or your own server later without changing the app; only `DATABASE_URL` changes.
 
 ### Option B — Your own server or office PC (Docker)
 

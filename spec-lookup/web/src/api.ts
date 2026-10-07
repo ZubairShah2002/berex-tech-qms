@@ -1,3 +1,5 @@
+import { shrinkPhoto } from './image';
+
 // Typed client for the Spec Lookup API. All requests go to the same origin.
 
 export interface User {
@@ -153,7 +155,8 @@ export const api = {
   restore: (id: string) => request<Product>('POST', `/api/products/${id}/restore`),
   restoreRevision: (id: string, revisionId: string) =>
     request<{ currentRevision: string; product: Product }>('POST', `/api/products/${id}/revisions/${revisionId}/restore`),
-  uploadFile: (id: string, file: File, kind: FileKind, caption: string) => {
+  uploadFile: async (id: string, original: File, kind: FileKind, caption: string) => {
+    const file = kind === 'photo' ? await shrinkPhoto(original) : original;
     const fd = new FormData();
     fd.append('kind', kind);
     fd.append('caption', caption);

@@ -17,8 +17,12 @@ export function createPool(databaseUrl = config.databaseUrl, schema = config.dbS
     ssl,
     max: 10,
     idleTimeoutMillis: 30_000,
-    // public stays on the path so the pg_trgm operators resolve.
-    options: `-c search_path=${schema},public`,
+  });
+  // Set per connection with SQL rather than a startup option: some hosted
+  // Postgres providers reject startup options. The query is queued ahead of
+  // any query the caller sends. public stays on the path for pg_trgm.
+  pool.on('connect', (client) => {
+    client.query(`SET search_path TO ${schema}, public`).catch(() => undefined);
   });
   return pool;
 }

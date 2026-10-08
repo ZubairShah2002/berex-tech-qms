@@ -277,10 +277,10 @@ describe('products', () => {
   });
 
   it('hides revision history from the public when disabled', async () => {
-    await req('PUT', '/api/settings', { as: 'admin', body: { siteName: 'Berex Tech', publicRevisionHistory: false } });
+    await req('PUT', '/api/settings', { as: 'admin', body: { siteName: '', publicRevisionHistory: false } });
     assert.equal((await req('GET', `/api/products/${id}/revisions`)).status, 401);
     assert.equal((await req('GET', `/api/products/${id}/revisions`, { as: 'QC01' })).status, 200);
-    await req('PUT', '/api/settings', { as: 'admin', body: { siteName: 'Berex Tech', publicRevisionHistory: true } });
+    await req('PUT', '/api/settings', { as: 'admin', body: { siteName: '', publicRevisionHistory: true } });
   });
 });
 

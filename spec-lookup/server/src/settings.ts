@@ -3,12 +3,12 @@ import type { Queryable } from './db.js';
 
 export const settingsSchema = z.object({
   publicRevisionHistory: z.boolean(),
-  siteName: z.string().trim().min(1).max(100),
+  siteName: z.string().trim().max(100),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
 
-const DEFAULTS: Settings = { publicRevisionHistory: true, siteName: 'Berex Tech' };
+const DEFAULTS: Settings = { publicRevisionHistory: true, siteName: '' };
 
 export async function getSettings(db: Queryable): Promise<Settings> {
   const { rows } = await db.query('SELECT key, value FROM settings');

@@ -173,11 +173,12 @@ function SettingsTab() {
   return (
     <section className="panel">
       <div className="panel-body" style={{ display: 'grid', gap: 14, maxWidth: 520 }}>
-        <div className="field"><label htmlFor="s-name">Company / site name (shown in the header)</label>
-          <input id="s-name" className="input" value={siteName} maxLength={100} onChange={(e) => setSiteName(e.target.value)} /></div>
+        <div className="field"><label htmlFor="s-name">Company name in the header (optional)</label>
+          <input id="s-name" className="input" value={siteName} maxLength={100} onChange={(e) => setSiteName(e.target.value)} />
+          <span className="hint">Leave blank to show only "Product Specification".</span></div>
         <label className="check"><input type="checkbox" checked={publicHistory} onChange={(e) => setPublicHistory(e.target.checked)} />
           Allow viewers without login to see revision history</label>
-        <div><button className="btn btn-primary" onClick={() => save.mutate()} disabled={save.isPending || !siteName.trim()}>Save Settings</button></div>
+        <div><button className="btn btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>Save Settings</button></div>
       </div>
     </section>
   );

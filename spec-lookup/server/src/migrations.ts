@@ -188,4 +188,9 @@ CREATE TABLE import_batches (
 );
 `,
   },
+  {
+    // The header no longer shows a company name unless an admin sets one.
+    version: 2,
+    sql: `UPDATE settings SET value = '""'::jsonb WHERE key = 'siteName' AND value = '"Berex Tech"'::jsonb;`,
+  },
 ];

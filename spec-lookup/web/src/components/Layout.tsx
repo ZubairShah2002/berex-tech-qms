@@ -22,7 +22,9 @@ export function Layout({ children }: { children: ReactNode }) {
     <>
       <header className={`topbar${open ? ' open' : ''}`}>
         <div className="topbar-inner">
-          <Link to="/" className="brand">{meta?.siteName ?? 'Berex Tech'}<small>Product Specification</small></Link>
+          <Link to="/" className="brand">
+            {meta?.siteName ? <>{meta.siteName}<small>Product Specification</small></> : 'Product Specification'}
+          </Link>
           <button className="menu-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>Menu</button>
           <nav className="nav" aria-label="Main">
             <NavLink to="/" end>Home</NavLink>

@@ -1,0 +1,33 @@
+# Local / on-premise run:  docker compose up -d   → http://localhost:8080
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: spec_lookup
+      POSTGRES_USER: spec
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - spec-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spec -d spec_lookup"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://spec:${POSTGRES_PASSWORD:-change-me}@db:5432/spec_lookup
+      ADMIN_USER_ID: ${ADMIN_USER_ID:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Plain http on a local network; put HTTPS in front and remove this line for internet access.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  spec-db:

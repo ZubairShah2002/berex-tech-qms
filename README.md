@@ -8,6 +8,10 @@ Enterprise Quality Management System for discrete manufacturing, built as a modu
 
 > After deployment, login with: `admin@berextech.com` / `Admin@123456`
 
+## Product Specification Lookup
+
+[`spec-lookup/`](spec-lookup/README.md) is a separate, lightweight app for QC staff: search and view product specifications without logging in, and log in to edit them. It runs and deploys on its own (Node.js + PostgreSQL, one container) and is designed to plug into the QMS later.
+
 ## Tech Stack
 
 - **Backend**: .NET 8 (ASP.NET Core Web API), Entity Framework Core 8, MediatR (CQRS)

@@ -72,3 +72,9 @@ TestResults/
 *.tmp
 *.bak
 *.cache
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Spec Lookup built-in database
+spec-lookup/data/

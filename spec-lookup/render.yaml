@@ -1,0 +1,38 @@
+# Render Blueprint for the Product Specification Lookup — FREE setup.
+#
+# The website runs on Render's free web service. The database runs on Neon's
+# free PostgreSQL plan (neon.tech), which does not expire. Render's own free
+# database is not used because it is deleted after 30 days.
+#
+# In Render: New → Blueprint → pick this repository → set "Blueprint file path"
+# to spec-lookup/render.yaml. Render will ask for DATABASE_URL: paste the Neon
+# connection string (see spec-lookup/README.md, "Free deployment").
+#
+# After the first deploy, log in with user "admin" and the ADMIN_PASSWORD value
+# shown under the service's Environment tab, then change the password.
+
+services:
+  - type: web
+    name: spec-lookup
+    runtime: docker
+    plan: free
+    dockerfilePath: ./spec-lookup/Dockerfile
+    dockerContext: ./spec-lookup
+    buildFilter:
+      paths: ['spec-lookup/**']
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false          # paste the Neon connection string when Render asks
+      - key: DATABASE_SSL
+        value: "true"
+      - key: ADMIN_USER_ID
+        value: admin
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      # Images and drawings are stored in the database. Neon's free plan has
+      # 0.5 GB, so keep individual files small.
+      - key: MAX_FILE_MB
+        value: "5"
